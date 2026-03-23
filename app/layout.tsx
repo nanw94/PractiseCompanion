@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "@mantine/core/styles.css";
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from "@mantine/core";
 import "./globals.css";
+import { AppFrame } from "@/components/AppFrame";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,9 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body>
-        <MantineProvider>{children}</MantineProvider>
+        <MantineProvider>
+          <AppFrame>{children}</AppFrame>
+        </MantineProvider>
       </body>
     </html>
   );
