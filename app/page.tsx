@@ -30,31 +30,34 @@ export default function HomePage() {
   );
 
   return (
-    <Container size="sm" py="md">
+    <Container size="sm" py="md" fluid={!!activeRun} style={activeRun ? { maxWidth: "100%" } : undefined}>
       <Stack gap="md">
-        <Title order={2}>Practice Hub</Title>
+        {!activeRun ? <Title order={2}>Today</Title> : null}
 
-        <Card withBorder>
-          <Stack gap="sm">
-            <Title order={3}>Today</Title>
-            <Group>
-              <Text fw={700}>{totalMin} min</Text>
-              <Text c="dimmed">{todaySessions.length} sessions</Text>
-            </Group>
-          </Stack>
-        </Card>
+        {!activeRun ? (
+          <Card withBorder>
+            <Stack gap="sm">
+              <Title order={3}>Summary</Title>
+              <Group>
+                <Text fw={700}>{totalMin} min</Text>
+                <Text c="dimmed">{todaySessions.length} sessions</Text>
+              </Group>
+            </Stack>
+          </Card>
+        ) : null}
 
-        <Card withBorder>
-          <Stack gap="sm">
-            <Title order={3}>Routine</Title>
-            <Select
-              label="Routine"
-              placeholder="Choose a routine"
-              data={routines.map((r) => ({ value: r.id, label: r.name }))}
-              value={routineId}
-              onChange={setRoutineId}
-            />
-            {!activeRun ? (
+        {!activeRun ? (
+          <Card withBorder>
+            <Stack gap="sm">
+              <Title order={3}>Start a routine</Title>
+              <Select
+                label="Routine"
+                placeholder="Choose a routine"
+                data={routines.map((r) => ({ value: r.id, label: r.name }))}
+                value={routineId}
+                onChange={setRoutineId}
+                comboboxProps={{ withinPortal: true }}
+              />
               <Button
                 disabled={!routineId}
                 onClick={() => {
@@ -64,21 +67,14 @@ export default function HomePage() {
               >
                 Start routine
               </Button>
-            ) : null}
-            <Button variant="default" onClick={() => router.push("/routines")}>
-              Edit routines
-            </Button>
-            <Button variant="default" onClick={() => router.push("/library")}>
-              Open library
-            </Button>
-          </Stack>
-        </Card>
-
-        {activeRun ? (
-          <Card withBorder>
-            <PracticeRunner />
+              <Button variant="default" onClick={() => router.push("/library?tab=routines")}>
+                Manage in Library
+              </Button>
+            </Stack>
           </Card>
         ) : null}
+
+        {activeRun ? <PracticeRunner /> : null}
       </Stack>
     </Container>
   );

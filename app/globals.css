@@ -47,3 +47,45 @@ a {
     color-scheme: dark;
   }
 }
+
+/* Mantine Select / MultiSelect dropdown options: match body text (avoid low-contrast white) */
+[data-mantine-select-dropdown] .mantine-Select-option,
+[data-mantine-combobox-dropdown] .mantine-Combobox-option,
+.mantine-MultiSelect-option,
+.mantine-Select-option {
+  color: var(--foreground) !important;
+}
+
+.mantine-Select-option[data-combobox-selected],
+.mantine-Combobox-option[data-combobox-selected] {
+  color: var(--foreground) !important;
+}
+
+/* Focus cue rotation during practice */
+@keyframes focusFadeCycle {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  88% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.focus-rotate-text {
+  /* One 4s cycle per label; new mount (key change) restarts */
+  animation: focusFadeCycle 4s ease-in-out forwards;
+}
+
+.focus-rotate-text--loop {
+  animation-iteration-count: infinite;
+}

@@ -11,8 +11,7 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Hub", href: "/" },
-  { label: "Routines", href: "/routines" },
+  { label: "Today", href: "/" },
   { label: "Library", href: "/library" },
   { label: "History", href: "/history" },
   { label: "Settings", href: "/settings" },
@@ -33,7 +32,9 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     <AppShell header={{ height: 56 }} footer={{ height: 56 }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Text fw={700}>Practice Companion</Text>
+          <Text className="music-app-brand" size="lg">
+            Practice Companion
+          </Text>
           {hasActiveRoutine ? (
             <UnstyledButton onClick={() => router.push("/")}>
               <Badge variant="filled">Routine running</Badge>

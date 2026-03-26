@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Group, Progress, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Progress, Stack, Text, Title } from "@mantine/core";
 import { useActiveRun } from "@/hooks/useActiveRun";
 import { useAppData } from "@/hooks/useAppData";
 import { resolveFocusLabels } from "@/lib/focus";
@@ -28,6 +28,25 @@ export function PracticeRunner() {
     return Math.min(100, (activeRun.stepElapsedSec / currentSection.durationSec) * 100);
   }, [activeRun, currentSection]);
 
+  const focusLabels = useMemo(() => {
+    if (!currentSection) return [];
+    return resolveFocusLabels(currentSection.focusIds ?? [], data.focusLibrary ?? []);
+  }, [currentSection, data.focusLibrary]);
+
+  const [focusIndex, setFocusIndex] = useState(0);
+
+  useEffect(() => {
+    setFocusIndex(0);
+  }, [activeRun?.currentStepIndex, focusLabels.join("|")]);
+
+  useEffect(() => {
+    if (focusLabels.length <= 1) return;
+    const id = window.setInterval(() => {
+      setFocusIndex((i) => (i + 1) % focusLabels.length);
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [focusLabels.length]);
+
   useEffect(() => {
     if (!routine || !activeRun) return;
     if (activeRun.currentStepIndex >= routine.steps.length) {
@@ -38,75 +57,109 @@ export function PracticeRunner() {
 
   if (!activeRun || !routine || !currentSection) return null;
 
-  const focusLabels = resolveFocusLabels(currentSection.focusIds ?? [], data.focusLibrary ?? []);
+  const activeFocusLabel =
+    focusLabels.length > 0 ? focusLabels[focusIndex % focusLabels.length] : null;
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between" align="end">
-        <Title order={3}>{routine.name}</Title>
-        <Text c="dimmed" size="sm">
-          {formatDuration(activeRun.elapsedSec)} / {formatDuration(totalDurationSec)}
+    <Box
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "calc(100dvh - 56px - 56px - 32px)",
+        maxWidth: 720,
+        marginInline: "auto",
+        width: "100%",
+      }}
+    >
+      {/* ~70%: section + focus emphasis */}
+      <Box
+        style={{
+          flex: "1 1 70%",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          border: "1px solid var(--mantine-color-default-border, #dee2e6)",
+          borderRadius: 12,
+          padding: "var(--mantine-spacing-md)",
+          background: "var(--mantine-color-body)",
+        }}
+      >
+        <Text size="sm" c="dimmed" ta="center" mb="xs">
+          {routine.name} · Section {activeRun.currentStepIndex + 1} of {routine.steps.length}
         </Text>
-      </Group>
 
-      <Card withBorder>
-        <Stack gap="xs">
-          <Text size="sm" c="dimmed">
-            Routine progress
-          </Text>
-          <Progress value={routinePercent} size="xl" radius="xl" h={20} />
-        </Stack>
-      </Card>
+        <Box
+          style={{
+            flex: 1,
+            minHeight: 180,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "var(--mantine-spacing-md)",
+          }}
+        >
+          {activeFocusLabel ? (
+            <Text
+              key={focusLabels.length <= 1 ? "single-focus" : `${focusIndex}-${activeFocusLabel}`}
+              className={
+                focusLabels.length <= 1 ? "focus-rotate-text focus-rotate-text--loop" : "focus-rotate-text"
+              }
+              ta="center"
+              fw={800}
+              style={{
+                fontSize: "clamp(2rem, 8vw, 3.5rem)",
+                lineHeight: 1.15,
+                maxWidth: "100%",
+              }}
+            >
+              {activeFocusLabel}
+            </Text>
+          ) : (
+            <Text ta="center" c="dimmed" size="xl" fw={600}>
+              No focus for this section
+            </Text>
+          )}
+        </Box>
 
-      <Card withBorder>
-        <Stack gap="xs">
-          <Text size="sm" c="dimmed">
-            Section progress
+        <Title order={3} ta="center" mb="sm" size="h4">
+          {currentSection.name}
+        </Title>
+
+        <Box mt="auto">
+          <Text size="xs" c="dimmed" mb={4}>
+            Section
           </Text>
-          <Progress value={sectionPercent} size="xl" radius="xl" h={20} />
-          <Group justify="space-between">
-            <Text size="sm">
+          <Progress value={sectionPercent} size="lg" radius="md" />
+          <Group justify="space-between" mt={6}>
+            <Text size="xs" c="dimmed">
               {formatDuration(activeRun.stepElapsedSec)} / {formatDuration(currentSection.durationSec)}
             </Text>
-            <Text size="sm" c="dimmed">
-              Remaining {formatDuration(currentSection.durationSec - activeRun.stepElapsedSec)}
+            <Text size="xs" c="dimmed">
+              {formatDuration(Math.max(0, currentSection.durationSec - activeRun.stepElapsedSec))} left
             </Text>
           </Group>
-        </Stack>
-      </Card>
+        </Box>
+      </Box>
 
-      <Card withBorder>
-        <Stack gap="xs">
-          <Text c="dimmed" size="sm">
-            Section {activeRun.currentStepIndex + 1} of {routine.steps.length}
-          </Text>
-          <Text fw={700} size="xl">
-            {currentSection.name}
-          </Text>
-          {focusLabels.length ? (
-            <Text c="dimmed">Focus: {focusLabels.join(", ")}</Text>
-          ) : (
-            <Text c="dimmed">Focus: (not set)</Text>
-          )}
-        </Stack>
-      </Card>
-
-      <Group>
-        <Button variant="default" onClick={prev}>
+      <Group justify="center" gap="xs" py="md" wrap="wrap">
+        <Button variant="default" size="sm" onClick={prev}>
           Back
         </Button>
         {activeRun.isRunning ? (
-          <Button variant="default" onClick={pause}>
+          <Button variant="default" size="sm" onClick={pause}>
             Pause
           </Button>
         ) : (
-          <Button onClick={resume}>Resume</Button>
+          <Button size="sm" onClick={resume}>
+            Resume
+          </Button>
         )}
-        <Button variant="default" onClick={next}>
+        <Button variant="default" size="sm" onClick={next}>
           Skip
         </Button>
         <Button
           color="green"
+          size="sm"
           onClick={() => {
             finish();
             router.push("/done");
@@ -115,7 +168,13 @@ export function PracticeRunner() {
           Finish
         </Button>
       </Group>
-    </Stack>
+
+      <Box mt="auto" pt="xs">
+        <Text size="xs" c="dimmed" mb={4}>
+          Routine · {formatDuration(activeRun.elapsedSec)} / {formatDuration(totalDurationSec)}
+        </Text>
+        <Progress value={routinePercent} size="xl" radius="xl" h={22} />
+      </Box>
+    </Box>
   );
 }
-

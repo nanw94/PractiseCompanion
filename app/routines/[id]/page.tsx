@@ -1,35 +1,42 @@
 "use client";
 
+import Link from "next/link";
+import type { CSSProperties, ReactNode } from "react";
 import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  ActionIcon,
   Badge,
   Button,
   Card,
   Container,
-  Divider,
   Group,
-  MultiSelect,
   NumberInput,
+  Select,
   Stack,
   Text,
-  TextInput,
-  Title,
 } from "@mantine/core";
 import { DndContext, DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import type { RoutineStep, RoutineTemplate, StepTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { resolveFocusLabels } from "@/lib/focus";
 import { formatDuration } from "@/lib/time";
+import { MusicPageShell } from "@/components/MusicPageShell";
 
 function newId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function clampDurationSec(sec: number) {
-  if (!Number.isFinite(sec)) return 60;
-  return Math.max(10, Math.round(sec));
+const MINUTE_OPTIONS = Array.from({ length: 20 }, (_, i) => ({
+  value: String(i + 1),
+  label: `${i + 1} min`,
+}));
+
+function clampRoutineMinutesSec(sec: number) {
+  const m = Math.round(sec / 60);
+  const c = Math.min(20, Math.max(1, m));
+  return c * 60;
 }
 
 export default function RoutineEditPage() {
@@ -50,12 +57,11 @@ export default function RoutineEditPage() {
   if (!routine) {
     return (
       <Container size="sm">
-        <Stack gap="md">
-          <Title order={2}>Routine not found</Title>
-          <Button variant="default" onClick={() => router.push("/routines")}>
-            Back to routines
+        <MusicPageShell eyebrow="Edit routine" title="Routine not found" hint="This routine may have been removed.">
+          <Button variant="default" onClick={() => router.push("/library?tab=routines")}>
+            Back to Library
           </Button>
-        </Stack>
+        </MusicPageShell>
       </Container>
     );
   }
@@ -67,23 +73,15 @@ export default function RoutineEditPage() {
     }));
   };
 
-  const updateStep = (stepId: string, patch: Partial<RoutineStep>) => {
+  const updateStepDuration = (stepId: string, durationSec: number) => {
+    const nextSec = clampRoutineMinutesSec(durationSec);
     updateRoutine({
       ...routine,
-      steps: routine.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s)),
+      steps: routine.steps.map((s) => (s.id === stepId ? { ...s, durationSec: nextSec } : s)),
       totalDurationSec: routine.steps.reduce(
-        (acc, s) => acc + (s.id === stepId ? (patch.durationSec ?? s.durationSec) : s.durationSec),
+        (acc, s) => acc + (s.id === stepId ? nextSec : s.durationSec),
         0,
       ),
-    });
-  };
-
-  const addStep = () => {
-    const section: RoutineStep = { id: newId(), name: "New section", durationSec: 5 * 60, focusIds: [] };
-    updateRoutine({
-      ...routine,
-      steps: [...routine.steps, section],
-      totalDurationSec: total + section.durationSec,
     });
   };
 
@@ -91,22 +89,23 @@ export default function RoutineEditPage() {
     const section: RoutineStep = {
       id: newId(),
       name: tpl.name,
-      durationSec: tpl.durationSec,
+      durationSec: clampRoutineMinutesSec(tpl.durationSec),
       focusIds: tpl.focusIds ?? [],
     };
+    const nextSteps = [...routine.steps, section];
     updateRoutine({
       ...routine,
-      steps: [...routine.steps, section],
-      totalDurationSec: total + section.durationSec,
+      steps: nextSteps,
+      totalDurationSec: nextSteps.reduce((a, s) => a + s.durationSec, 0),
     });
   };
 
   const removeStep = (stepId: string) => {
-    const removed = routine.steps.find((s) => s.id === stepId);
+    const nextSteps = routine.steps.filter((s) => s.id !== stepId);
     updateRoutine({
       ...routine,
-      steps: routine.steps.filter((s) => s.id !== stepId),
-      totalDurationSec: Math.max(0, routine.totalDurationSec - (removed?.durationSec ?? 0)),
+      steps: nextSteps,
+      totalDurationSec: nextSteps.reduce((a, s) => a + s.durationSec, 0),
     });
   };
 
@@ -120,82 +119,95 @@ export default function RoutineEditPage() {
   return (
     <Container size="sm">
       <DndContext onDragEnd={onDragEnd}>
-        <Stack gap="md">
-          <Group justify="space-between" align="end">
-            <Title order={2}>Edit routine</Title>
-            <Text c="dimmed" size="sm">
+        <MusicPageShell
+          eyebrow="Edit routine"
+          title={routine.name}
+          hint="Drop saved sections into the canvas. Duration can be set to 1–20 minutes per section."
+          trailing={
+            <Text size="sm" fw={600} className="music-hint">
               Total: {formatDuration(total)}
             </Text>
-          </Group>
+          }
+        >
+          <Stack gap="md">
+            <StepLibraryPanel stepLibrary={stepLibrary} focusLibrary={focusLibrary} />
 
-          <Card withBorder>
+            <RoutineDropzone>
             <Stack gap="sm">
-              <TextInput
-                label="Routine name"
-                value={routine.name}
-                onChange={(e) => updateRoutine({ ...routine, name: e.currentTarget.value })}
-              />
-            </Stack>
-          </Card>
+              {routine.steps.length === 0 ? (
+                <Text c="dimmed" size="sm" py="md">
+                  No sections yet. Drag from Saved sections or add a new template in Library.
+                </Text>
+              ) : null}
+              {routine.steps.map((s, idx) => {
+                const minutes = Math.round(s.durationSec / 60);
+                const clampedMin = Math.min(20, Math.max(1, minutes));
+                return (
+                  <Card key={s.id} withBorder className="music-card">
+                    <Stack gap="sm">
+                      <Group justify="space-between" align="center">
+                        <Stack gap={4}>
+                          <Text fw={700} size="lg">
+                            {s.name}
+                          </Text>
+                          <Group gap={4}>
+                            {resolveFocusLabels(s.focusIds, focusLibrary).map((lbl) => (
+                              <Badge key={lbl} size="sm" variant="light">
+                                {lbl}
+                              </Badge>
+                            ))}
+                          </Group>
+                        </Stack>
+                        <Button variant="default" color="red" size="xs" onClick={() => removeStep(s.id)}>
+                          Remove
+                        </Button>
+                      </Group>
 
-          <StepLibraryPanel stepLibrary={stepLibrary} focusLibrary={focusLibrary} />
+                      <Text size="xs" c="dimmed">
+                        Section {idx + 1} · duration only (edit name/focus in Library → Sections)
+                      </Text>
 
-          <RoutineDropzone>
-            <Stack gap="sm">
-              {routine.steps.map((s, idx) => (
-                <Card key={s.id} withBorder>
-                  <Stack gap="sm">
-                    <Group justify="space-between" align="center">
-                      <Text fw={600}>Section {idx + 1}</Text>
-                      <Button variant="default" color="red" onClick={() => removeStep(s.id)}>
-                        Remove
-                      </Button>
-                    </Group>
-
-                    <TextInput
-                      label="Name"
-                      value={s.name}
-                      onChange={(e) => updateStep(s.id, { name: e.currentTarget.value })}
-                    />
-
-                    <NumberInput
-                      label="Minutes"
-                      min={1}
-                      max={120}
-                      value={Math.round(s.durationSec / 60)}
-                      onChange={(v) => {
-                        const minutes = typeof v === "number" ? v : parseFloat(String(v));
-                        updateStep(s.id, { durationSec: clampDurationSec(minutes * 60) });
-                      }}
-                    />
-
-                    <MultiSelect
-                      label="Focus"
-                      placeholder="Select focus items"
-                      data={focusLibrary.map((f) => ({ value: f.id, label: f.label }))}
-                      value={s.focusIds}
-                      onChange={(value) => updateStep(s.id, { focusIds: value })}
-                      searchable
-                    />
-                  </Stack>
-                </Card>
-              ))}
+                      <Group align="flex-end" grow>
+                        <Select
+                          label="Minutes"
+                          description="Choose 1–20"
+                          data={MINUTE_OPTIONS}
+                          value={String(clampedMin)}
+                          onChange={(v) => {
+                            if (!v) return;
+                            const n = parseInt(v, 10);
+                            if (Number.isFinite(n)) updateStepDuration(s.id, n * 60);
+                          }}
+                          comboboxProps={{ withinPortal: true }}
+                        />
+                        <NumberInput
+                          label="Or type minutes"
+                          description="1–20"
+                          min={1}
+                          max={20}
+                          value={clampedMin}
+                          onChange={(v) => {
+                            const n = typeof v === "number" ? v : parseFloat(String(v));
+                            if (!Number.isFinite(n)) return;
+                            updateStepDuration(s.id, Math.round(n) * 60);
+                          }}
+                        />
+                      </Group>
+                    </Stack>
+                  </Card>
+                );
+              })}
             </Stack>
           </RoutineDropzone>
 
-          <Button variant="light" onClick={addStep}>
-            Add section
-          </Button>
-
-          <Divider />
-
-          <Group justify="space-between">
-            <Button variant="default" onClick={() => router.push("/routines")}>
-              Back
-            </Button>
-            <Button onClick={() => router.push("/")}>Done</Button>
-          </Group>
-        </Stack>
+            <Group justify="space-between">
+              <Button variant="default" onClick={() => router.push("/library?tab=routines")}>
+                Back
+              </Button>
+              <Button onClick={() => router.push("/")}>Done</Button>
+            </Group>
+          </Stack>
+        </MusicPageShell>
       </DndContext>
     </Container>
   );
@@ -209,11 +221,27 @@ function StepLibraryPanel({
   focusLibrary: { id: string; label: string }[];
 }) {
   return (
-    <Card withBorder>
+    <Card withBorder className="music-card">
       <Stack gap="sm">
-        <Text fw={600}>Saved sections</Text>
+        <Group justify="space-between" align="center">
+          <Text fw={600}>Saved sections</Text>
+          <ActionIcon
+            component={Link}
+            href="/library?tab=sections"
+            variant="light"
+            color="burgundy"
+            size="lg"
+            radius="md"
+            aria-label="Add new section template"
+            title="Add section in Library"
+          >
+            <Text fw={900} size="lg" lh={1}>
+              +
+            </Text>
+          </ActionIcon>
+        </Group>
         <Text c="dimmed" size="sm">
-          Drag a section tile into the routine canvas.
+          Drag a tile into the routine canvas below.
         </Text>
         <Group gap="sm" align="stretch">
           {stepLibrary.length ? (
@@ -228,7 +256,7 @@ function StepLibraryPanel({
             ))
           ) : (
             <Text c="dimmed" size="sm">
-              No saved sections yet. Add some in Library.
+              No saved sections. Tap + to add one in Library.
             </Text>
           )}
         </Group>
@@ -249,19 +277,17 @@ function DraggableStep({
   focusLabels: string[];
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     opacity: isDragging ? 0.6 : 1,
     cursor: "grab",
     padding: "10px 12px",
-    border: "1px solid var(--mantine-color-gray-4)",
-    borderRadius: 8,
     userSelect: "none",
     minWidth: 220,
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+    <div ref={setNodeRef} className="music-draggable-tile" style={style} {...listeners} {...attributes}>
       <Stack gap={4}>
         <Text size="sm" fw={600}>
           {label}
@@ -271,7 +297,7 @@ function DraggableStep({
         </Text>
         <Group gap={4}>
           {focusLabels.length ? (
-            focusLabels.slice(0, 3).map((focus) => (
+            focusLabels.slice(0, 4).map((focus) => (
               <Badge key={focus} size="xs" variant="outline">
                 {focus}
               </Badge>
@@ -287,23 +313,21 @@ function DraggableStep({
   );
 }
 
-function RoutineDropzone({ children }: { children: React.ReactNode }) {
+function RoutineDropzone({ children }: { children: ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: "routine-dropzone" });
 
   return (
     <Card
       withBorder
       ref={setNodeRef}
-      style={{
-        borderStyle: "dashed",
-        borderColor: isOver ? "var(--mantine-color-blue-6)" : undefined,
-      }}
+      className="music-dropzone-card"
+      data-music-over={isOver ? "true" : "false"}
     >
       <Stack gap="sm">
         <Group justify="space-between">
-          <Text fw={600}>Routine canvas (drop sections here)</Text>
+          <Text fw={600}>Routine canvas</Text>
           <Text c="dimmed" size="sm">
-            {isOver ? "Release to add section" : "Drag from Saved sections"}
+            {isOver ? "Release to add section" : "Drop sections only"}
           </Text>
         </Group>
         {children}
@@ -311,4 +335,3 @@ function RoutineDropzone({ children }: { children: React.ReactNode }) {
     </Card>
   );
 }
-

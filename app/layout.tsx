@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "@mantine/core/styles.css";
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from "@mantine/core";
 import "./globals.css";
+import "./music-theme.css";
+import { practiceMantineTheme } from "@/lib/mantine-theme";
 import { AppFrame } from "@/components/AppFrame";
 
 const geistSans = Geist({
@@ -29,13 +31,13 @@ export default function RootLayout({
     <html
       lang="en"
       {...mantineHtmlProps}
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} music-theme-root`}
     >
       <head>
-        <ColorSchemeScript />
+        <ColorSchemeScript defaultColorScheme="auto" />
       </head>
       <body>
-        <MantineProvider>
+        <MantineProvider theme={practiceMantineTheme} defaultColorScheme="auto">
           <AppFrame>{children}</AppFrame>
         </MantineProvider>
       </body>

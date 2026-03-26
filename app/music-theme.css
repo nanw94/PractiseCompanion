@@ -1,0 +1,174 @@
+/**
+ * Music theme — tokens + chrome. See docs/music-theme-template.md.
+ * Scope: html.music-theme-root (set in app/layout.tsx)
+ */
+
+.music-theme-root {
+  --music-bg-base: #f2ebe0;
+  --music-bg-deep: #e8dfd2;
+  --music-ink: #2c2416;
+  --music-ink-muted: #6b5d4f;
+  --music-accent: #8b2942;
+  --music-accent-soft: rgba(139, 41, 66, 0.12);
+  --music-gold: #9a7b2c;
+  --music-gold-soft: rgba(154, 123, 44, 0.2);
+  --music-surface: rgba(255, 252, 248, 0.88);
+  --music-surface-solid: #fffaf5;
+  --music-surface-border: rgba(44, 36, 22, 0.12);
+  --music-dropzone: rgba(139, 41, 66, 0.22);
+  --foreground: var(--music-ink);
+  --background: var(--music-bg-base);
+}
+
+@media (prefers-color-scheme: dark) {
+  .music-theme-root {
+    --music-bg-base: #12161c;
+    --music-bg-deep: #0d1014;
+    --music-ink: #e8e2d9;
+    --music-ink-muted: #a39a8c;
+    --music-accent: #c75a74;
+    --music-accent-soft: rgba(199, 90, 116, 0.18);
+    --music-gold: #d4af37;
+    --music-gold-soft: rgba(212, 175, 55, 0.2);
+    --music-surface: rgba(28, 32, 40, 0.82);
+    --music-surface-solid: #1c2028;
+    --music-surface-border: rgba(232, 226, 217, 0.1);
+    --music-dropzone: rgba(212, 175, 55, 0.35);
+    --foreground: var(--music-ink);
+    --background: var(--music-bg-base);
+  }
+}
+
+.music-theme-root body {
+  color: var(--music-ink);
+  background-color: var(--music-bg-base);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 100% -20%, var(--music-accent-soft), transparent 55%),
+    radial-gradient(ellipse 90% 60% at -10% 110%, var(--music-gold-soft), transparent 50%),
+    url("/music-theme-pattern.svg");
+  background-size: auto, auto, 520px;
+  background-repeat: no-repeat, no-repeat, repeat;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.music-theme-root .mantine-AppShell-main {
+  background: transparent;
+}
+
+.music-theme-root .mantine-AppShell-header {
+  background: var(--music-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--music-surface-border);
+}
+
+.music-theme-root .mantine-AppShell-footer {
+  background: var(--music-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--music-surface-border);
+}
+
+.music-app-brand {
+  font-weight: 750 !important;
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, var(--music-ink) 0%, var(--music-accent) 45%, var(--music-gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .music-app-brand {
+    background: linear-gradient(120deg, var(--music-ink) 0%, #e8b4c0 40%, var(--music-gold) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+}
+
+.music-page-shell {
+  position: relative;
+}
+
+.music-page-shell::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -0.5rem;
+  width: 3rem;
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--music-accent), var(--music-gold));
+  opacity: 0.85;
+}
+
+.music-eyebrow {
+  color: var(--music-gold) !important;
+  letter-spacing: 0.14em;
+}
+
+.music-page-title {
+  color: var(--music-ink) !important;
+  letter-spacing: -0.03em;
+}
+
+.music-hint {
+  color: var(--music-ink-muted) !important;
+  max-width: 36rem;
+}
+
+.music-card.mantine-Card-root {
+  background: var(--music-surface);
+  border-color: var(--music-surface-border);
+  box-shadow: 0 10px 40px rgba(44, 36, 22, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  .music-card.mantine-Card-root {
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.music-dropzone-card.mantine-Card-root {
+  background: color-mix(in srgb, var(--music-surface) 92%, var(--music-bg-deep));
+  border-style: dashed !important;
+  border-color: var(--music-dropzone) !important;
+}
+
+.music-dropzone-card[data-music-over="true"].mantine-Card-root {
+  border-color: var(--music-gold) !important;
+  box-shadow: 0 0 0 2px var(--music-gold-soft);
+}
+
+.music-draggable-tile {
+  background: var(--music-surface-solid);
+  border: 1px solid var(--music-surface-border) !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(44, 36, 22, 0.05);
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.music-draggable-tile:hover {
+  border-color: color-mix(in srgb, var(--music-accent) 35%, var(--music-surface-border)) !important;
+  box-shadow: 0 6px 20px rgba(139, 41, 66, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .music-draggable-tile:hover {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.music-theme-root [data-mantine-select-dropdown] .mantine-Select-option,
+.music-theme-root [data-mantine-combobox-dropdown] .mantine-Combobox-option,
+.music-theme-root .mantine-MultiSelect-option,
+.music-theme-root .mantine-Select-option {
+  color: var(--foreground) !important;
+}
+
+.music-theme-root .mantine-Select-option[data-combobox-selected],
+.music-theme-root .mantine-Combobox-option[data-combobox-selected] {
+  color: var(--foreground) !important;
+}

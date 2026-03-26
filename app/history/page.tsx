@@ -38,6 +38,7 @@ export default function HistoryPage() {
             value={tagFilter}
             onChange={setTagFilter}
             w={220}
+            comboboxProps={{ withinPortal: true }}
           />
         </Group>
 
