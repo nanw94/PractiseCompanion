@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Cloud sync (optional)
+
+Sign in with Google or Apple via [Supabase](https://supabase.com) (free tier). Copy `.env.example` to `.env.local`, add your project URL and anon key, run the SQL in `supabase/migrations/001_user_app_data.sql`, and configure OAuth redirect URLs. Full steps: **`docs/supabase-setup.md`**.
+
+Without env vars, the app uses **local storage only** (same as before).
+
 ## Getting Started
 
 First, run the development server:

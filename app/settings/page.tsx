@@ -15,7 +15,7 @@ function download(filename: string, text: string) {
 }
 
 export default function SettingsPage() {
-  const { data, update } = useAppData();
+  const { data, update, cloudSyncEnabled } = useAppData();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +28,9 @@ export default function SettingsPage() {
           <Stack gap="sm">
             <Title order={3}>Data</Title>
             <Text c="dimmed" size="sm">
-              Local-only storage. Export/import is JSON.
+              {cloudSyncEnabled
+                ? "Signed in: your library syncs to Supabase (and stays cached in this browser). Export/import is still available as JSON backup."
+                : "Local-only storage in this browser. Sign in from the header to sync with Supabase. Export/import is JSON."}
             </Text>
 
             <Group>

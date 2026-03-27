@@ -3,7 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import { ActionIcon, AppShell, Badge, Group, Text, UnstyledButton } from "@mantine/core";
 import { useMemo } from "react";
-import { useAppData } from "@/hooks/useAppData";
+import { AuthBar } from "@/components/AuthBar";
+import { useAppData } from "@/components/AppDataProvider";
 
 type NavItem = {
   label: string;
@@ -31,15 +32,18 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   return (
     <AppShell header={{ height: 56 }} footer={{ height: 56 }} padding="md">
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Text className="music-app-brand" size="lg">
             Practice Companion
           </Text>
-          {hasActiveRoutine ? (
-            <UnstyledButton onClick={() => router.push("/")}>
-              <Badge variant="filled">Routine running</Badge>
-            </UnstyledButton>
-          ) : null}
+          <Group gap="sm" wrap="nowrap">
+            {hasActiveRoutine ? (
+              <UnstyledButton onClick={() => router.push("/")}>
+                <Badge variant="filled">Routine running</Badge>
+              </UnstyledButton>
+            ) : null}
+            <AuthBar />
+          </Group>
         </Group>
       </AppShell.Header>
 

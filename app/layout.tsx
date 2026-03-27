@@ -5,6 +5,7 @@ import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from "@mantine/c
 import "./globals.css";
 import "./music-theme.css";
 import { practiceMantineTheme } from "@/lib/mantine-theme";
+import { AppDataProvider } from "@/components/AppDataProvider";
 import { AppFrame } from "@/components/AppFrame";
 
 const geistSans = Geist({
@@ -38,7 +39,9 @@ export default function RootLayout({
       </head>
       <body>
         <MantineProvider theme={practiceMantineTheme} defaultColorScheme="auto">
-          <AppFrame>{children}</AppFrame>
+          <AppDataProvider>
+            <AppFrame>{children}</AppFrame>
+          </AppDataProvider>
         </MantineProvider>
       </body>
     </html>

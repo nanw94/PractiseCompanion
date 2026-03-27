@@ -10,7 +10,8 @@ import { STORAGE_VERSION as CURRENT_VERSION } from "./model";
 
 const STORAGE_KEY = "practice-companion:data";
 
-function emptyData(): AppData {
+/** Exported for server validation and Supabase seed. */
+export function createEmptyAppData(): AppData {
   const focusLibrary: FocusItem[] = [
     { id: "posture", label: "Posture" },
     { id: "bow", label: "Relaxed bow" },
@@ -45,10 +46,10 @@ function emptyData(): AppData {
 }
 
 export function loadAppData(): AppData {
-  if (typeof window === "undefined") return emptyData();
+  if (typeof window === "undefined") return createEmptyAppData();
 
   const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return emptyData();
+  if (!raw) return createEmptyAppData();
 
   try {
     const parsed = JSON.parse(raw) as Partial<AppData>;
@@ -59,13 +60,13 @@ export function loadAppData(): AppData {
         presets: Array.isArray(parsed.presets) ? parsed.presets : [],
         routines: Array.isArray((parsed as any).routines)
           ? ((parsed as any).routines as RoutineTemplate[])
-          : emptyData().routines,
+          : createEmptyAppData().routines,
         stepLibrary: Array.isArray((parsed as any).stepLibrary)
           ? ((parsed as any).stepLibrary as StepTemplate[])
-          : emptyData().stepLibrary,
+          : createEmptyAppData().stepLibrary,
         focusLibrary: Array.isArray((parsed as any).focusLibrary)
           ? ((parsed as any).focusLibrary as FocusItem[])
-          : emptyData().focusLibrary,
+          : createEmptyAppData().focusLibrary,
         activeRun: (parsed as any).activeRun,
         lastCompletedRun: (parsed as any).lastCompletedRun,
       };
@@ -73,7 +74,7 @@ export function loadAppData(): AppData {
 
     // v1 -> v3 best-effort migration
     if (parsed.version === 1) {
-      const base = emptyData();
+      const base = createEmptyAppData();
       const sessions = Array.isArray(parsed.sessions) ? (parsed.sessions as Session[]) : [];
       const presets = Array.isArray(parsed.presets) ? parsed.presets : [];
       return { ...base, sessions, presets };
@@ -81,7 +82,7 @@ export function loadAppData(): AppData {
 
     // v2 -> v3 focus text -> focus ids migration
     if ((parsed as any).version === 2) {
-      const base = emptyData();
+      const base = createEmptyAppData();
       const sessions = Array.isArray(parsed.sessions) ? (parsed.sessions as Session[]) : [];
       const presets = Array.isArray(parsed.presets) ? parsed.presets : [];
       const routinesV2 = Array.isArray((parsed as any).routines) ? (parsed as any).routines : [];
@@ -127,15 +128,20 @@ export function loadAppData(): AppData {
       };
     }
 
-    return emptyData();
+    return createEmptyAppData();
   } catch {
-    return emptyData();
+    return createEmptyAppData();
   }
 }
 
 export function saveAppData(data: AppData): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+export function clearAppData(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(STORAGE_KEY);
 }
 
 export function appendSession(session: Session): void {
