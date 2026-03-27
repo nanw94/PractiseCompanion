@@ -7,14 +7,17 @@ import {
   Card,
   Container,
   Group,
+  Image,
   MultiSelect,
   NumberInput,
   Stack,
   Tabs,
   Text,
+  Textarea,
   TextInput,
   Title,
 } from "@mantine/core";
+import { compressImage } from "@/lib/compress-image";
 import type { FocusItem, RoutineTemplate, StepTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { useActiveRun } from "@/hooks/useActiveRun";
@@ -62,10 +65,14 @@ export default function LibraryPage() {
   const [sectionName, setSectionName] = useState("");
   const [sectionMinutes, setSectionMinutes] = useState<number | string>(5);
   const [sectionFocusIds, setSectionFocusIds] = useState<string[]>([]);
+  const [sectionNote, setSectionNote] = useState("");
+  const [sectionImageDataUrl, setSectionImageDataUrl] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionName, setEditingSectionName] = useState("");
   const [editingSectionMinutes, setEditingSectionMinutes] = useState<number | string>(5);
   const [editingSectionFocusIds, setEditingSectionFocusIds] = useState<string[]>([]);
+  const [editingSectionNote, setEditingSectionNote] = useState("");
+  const [editingSectionImageDataUrl, setEditingSectionImageDataUrl] = useState<string | null>(null);
 
   const sectionMinutesNum = useMemo(() => {
     const n = typeof sectionMinutes === "number" ? sectionMinutes : parseFloat(String(sectionMinutes));
@@ -117,7 +124,7 @@ export default function LibraryPage() {
                           id: newRoutineId(),
                           name: routineName.trim(),
                           totalDurationSec: 20 * 60,
-                          steps: [{ id: newId("step"), name: "Warm-up", durationSec: 5 * 60, focusIds: [] }],
+                          steps: [],
                         };
                         update((prev) => ({ ...prev, routines: [routine, ...(prev.routines ?? [])] }));
                         router.push(`/routines/${routine.id}`);
@@ -207,6 +214,18 @@ export default function LibraryPage() {
                     searchable
                     comboboxProps={{ withinPortal: true }}
                   />
+                  <Textarea
+                    label="Note"
+                    description="Shown during practice"
+                    placeholder="Any cues or reminders…"
+                    rows={3}
+                    value={sectionNote}
+                    onChange={(e) => setSectionNote(e.currentTarget.value)}
+                  />
+                  <ImageUploadField
+                    dataUrl={sectionImageDataUrl}
+                    onChange={setSectionImageDataUrl}
+                  />
                   <Button
                     disabled={!sectionName.trim()}
                     onClick={() => {
@@ -215,6 +234,8 @@ export default function LibraryPage() {
                         name: sectionName.trim(),
                         durationSec: sectionMinutesNum * 60,
                         focusIds: sectionFocusIds,
+                        note: sectionNote.trim() || undefined,
+                        imageDataUrl: sectionImageDataUrl ?? undefined,
                       };
                       update((prev) => ({
                         ...prev,
@@ -223,6 +244,8 @@ export default function LibraryPage() {
                       setSectionName("");
                       setSectionMinutes(5);
                       setSectionFocusIds([]);
+                      setSectionNote("");
+                      setSectionImageDataUrl(null);
                     }}
                   >
                     Add section
@@ -266,8 +289,38 @@ export default function LibraryPage() {
                             searchable
                             comboboxProps={{ withinPortal: true }}
                           />
+                          <Textarea
+                            label="Note"
+                            description="Shown during practice"
+                            rows={3}
+                            value={editingSectionNote}
+                            onChange={(e) => setEditingSectionNote(e.currentTarget.value)}
+                          />
+                          <ImageUploadField
+                            dataUrl={editingSectionImageDataUrl}
+                            onChange={setEditingSectionImageDataUrl}
+                          />
                         </>
-                      ) : null}
+                      ) : (
+                        <>
+                          {s.note ? (
+                            <Text size="sm" c="dimmed" lineClamp={2}>
+                              📝 {s.note}
+                            </Text>
+                          ) : null}
+                          {s.imageDataUrl ? (
+                            <Image
+                              src={s.imageDataUrl}
+                              alt="section"
+                              radius="sm"
+                              h={80}
+                              w="auto"
+                              fit="contain"
+                              style={{ maxWidth: 120 }}
+                            />
+                          ) : null}
+                        </>
+                      )}
 
                       <Group justify="flex-end">
                         {editingSectionId === s.id ? (
@@ -290,6 +343,8 @@ export default function LibraryPage() {
                                           name: editingSectionName.trim() || x.name,
                                           durationSec: Math.max(60, Math.round((mins || 1) * 60)),
                                           focusIds: editingSectionFocusIds,
+                                          note: editingSectionNote.trim() || undefined,
+                                          imageDataUrl: editingSectionImageDataUrl ?? undefined,
                                         }
                                       : x,
                                   ),
@@ -308,6 +363,8 @@ export default function LibraryPage() {
                               setEditingSectionName(s.name);
                               setEditingSectionMinutes(Math.round(s.durationSec / 60));
                               setEditingSectionFocusIds(s.focusIds);
+                              setEditingSectionNote(s.note ?? "");
+                              setEditingSectionImageDataUrl(s.imageDataUrl ?? null);
                             }}
                           >
                             Edit
@@ -451,8 +508,62 @@ export default function LibraryPage() {
               </Stack>
             </Stack>
           </Tabs.Panel>
-        </Tabs>
+          </Tabs>
       </Stack>
     </Container>
+  );
+}
+
+function ImageUploadField({
+  dataUrl,
+  onChange,
+}: {
+  dataUrl: string | null;
+  onChange: (url: string | null) => void;
+}) {
+  return (
+    <Stack gap="xs">
+      <Text size="sm" fw={500}>
+        Image <Text span size="xs" c="dimmed">(one image, shown during practice)</Text>
+      </Text>
+      {dataUrl ? (
+        <Group align="flex-start" gap="sm">
+          <Image
+            src={dataUrl}
+            alt="section"
+            radius="sm"
+            h={100}
+            w="auto"
+            fit="contain"
+            style={{ maxWidth: 160, border: "1px solid var(--music-surface-border, #dee2e6)", borderRadius: 8 }}
+          />
+          <Button size="xs" variant="subtle" color="red" onClick={() => onChange(null)}>
+            Remove image
+          </Button>
+        </Group>
+      ) : (
+        <label style={{ display: "inline-block" }}>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={async (e) => {
+              const file = e.currentTarget.files?.[0];
+              if (!file) return;
+              try {
+                const dataUrl = await compressImage(file);
+                onChange(dataUrl);
+              } catch {
+                // silently ignore
+              }
+              e.currentTarget.value = "";
+            }}
+          />
+          <Button size="sm" variant="default" component="span">
+            Upload image
+          </Button>
+        </label>
+      )}
+    </Stack>
   );
 }

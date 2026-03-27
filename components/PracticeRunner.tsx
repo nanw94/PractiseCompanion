@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Button, Group, Progress, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Image, Progress, Stack, Text, Title } from "@mantine/core";
 import { useActiveRun } from "@/hooks/useActiveRun";
 import { useAppData } from "@/hooks/useAppData";
 import { resolveFocusLabels } from "@/lib/focus";
@@ -71,7 +71,7 @@ export function PracticeRunner() {
         width: "100%",
       }}
     >
-      {/* ~70%: section + focus emphasis */}
+      {/* ~70%: section block laid out by fixed strips */}
       <Box
         style={{
           flex: "1 1 70%",
@@ -82,20 +82,95 @@ export function PracticeRunner() {
           borderRadius: 12,
           padding: "var(--mantine-spacing-md)",
           background: "var(--mantine-color-body)",
+          gap: 12,
         }}
       >
-        <Text size="sm" c="dimmed" ta="center" mb="xs">
-          {routine.name} · Section {activeRun.currentStepIndex + 1} of {routine.steps.length}
-        </Text>
-
         <Box
           style={{
-            flex: 1,
-            minHeight: 180,
+            border: "1px solid var(--mantine-color-default-border, #dee2e6)",
+            borderRadius: 8,
+            padding: "10px 12px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "var(--mantine-spacing-md)",
+          }}
+        >
+          <Text size="sm" c="dimmed" ta="center">
+            {routine.name} · Section {activeRun.currentStepIndex + 1}/{routine.steps.length}
+          </Text>
+        </Box>
+
+        <Box
+          style={{
+            border: "1px solid var(--mantine-color-default-border, #dee2e6)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text fw={700} ta="center" size="lg">
+            {currentSection.name}
+          </Text>
+        </Box>
+
+        <Box
+          style={{
+            flex: "0 0 22%",
+            minHeight: 90,
+            border: "1px solid var(--mantine-color-default-border, #dee2e6)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            overflowY: "auto",
+          }}
+        >
+          <Text size="xs" c="dimmed" mb={4}>
+            Note
+          </Text>
+          <Text size="sm" style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+            {currentSection.note?.trim() ? currentSection.note : "No note"}
+          </Text>
+        </Box>
+
+        <Box
+          style={{
+            flex: "0 0 30%",
+            minHeight: 120,
+            border: "1px solid var(--mantine-color-default-border, #dee2e6)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
+        >
+          {currentSection.imageDataUrl ? (
+            <Image
+              src={currentSection.imageDataUrl}
+              alt="section reference"
+              radius="sm"
+              fit="contain"
+              h="100%"
+              w="100%"
+              style={{ maxHeight: "100%" }}
+            />
+          ) : (
+            <Text c="dimmed">No image</Text>
+          )}
+        </Box>
+
+        <Box
+          style={{
+            flex: "1 1 auto",
+            minHeight: 120,
+            border: "1px solid var(--mantine-color-default-border, #dee2e6)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           {activeFocusLabel ? (
@@ -107,7 +182,7 @@ export function PracticeRunner() {
               ta="center"
               fw={800}
               style={{
-                fontSize: "clamp(2rem, 8vw, 3.5rem)",
+                fontSize: "clamp(1.4rem, 5vw, 2.5rem)",
                 lineHeight: 1.15,
                 maxWidth: "100%",
               }}
@@ -115,19 +190,21 @@ export function PracticeRunner() {
               {activeFocusLabel}
             </Text>
           ) : (
-            <Text ta="center" c="dimmed" size="xl" fw={600}>
-              No focus for this section
+            <Text ta="center" c="dimmed" size="lg" fw={600}>
+              No focus
             </Text>
           )}
         </Box>
 
-        <Title order={3} ta="center" mb="sm" size="h4">
-          {currentSection.name}
-        </Title>
-
-        <Box mt="auto">
+        <Box
+          style={{
+            border: "1px solid var(--mantine-color-default-border, #dee2e6)",
+            borderRadius: 8,
+            padding: "8px 10px",
+          }}
+        >
           <Text size="xs" c="dimmed" mb={4}>
-            Section
+            Progress bar for section
           </Text>
           <Progress value={sectionPercent} size="lg" radius="md" />
           <Group justify="space-between" mt={6}>

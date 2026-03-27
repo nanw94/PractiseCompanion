@@ -34,6 +34,8 @@ export type RoutineStep = {
   name: string;
   durationSec: number;
   focusIds: Id[];
+  note?: string;
+  imageDataUrl?: string;
 };
 
 export type StepTemplate = {
@@ -41,6 +43,8 @@ export type StepTemplate = {
   name: string;
   durationSec: number;
   focusIds: Id[];
+  note?: string;
+  imageDataUrl?: string;
 };
 
 export type FocusItem = {
