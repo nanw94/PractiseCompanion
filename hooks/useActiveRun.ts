@@ -138,7 +138,20 @@ export function useActiveRun() {
   useEffect(() => {
     if (!activeRun?.isRunning || !routine) return;
 
+    let lastTickTimeMs = Date.now();
+    let accumulatedMs = 0;
+
     tickRef.current = window.setInterval(() => {
+      const now = Date.now();
+      const deltaMs = now - lastTickTimeMs;
+      lastTickTimeMs = now;
+      accumulatedMs += deltaMs;
+
+      if (accumulatedMs < 1000) return;
+
+      const addSec = Math.floor(accumulatedMs / 1000);
+      accumulatedMs -= addSec * 1000;
+
       update((prev) => {
         const run = prev.activeRun;
         if (!run?.isRunning) return prev;
@@ -148,25 +161,43 @@ export function useActiveRun() {
         const step = r.steps[run.currentStepIndex];
         if (!step) return prev;
 
-        const nextRun: ActiveRun = {
-          ...run,
-          elapsedSec: run.elapsedSec + 1,
-          stepElapsedSec: run.stepElapsedSec + 1,
-        };
+        let currentElapsed = run.elapsedSec + addSec;
+        let currentStepElapsed = run.stepElapsedSec + addSec;
+        let currentIndex = run.currentStepIndex;
+        let didBeep = false;
 
-        if (nextRun.stepElapsedSec >= step.durationSec) {
+        while (currentIndex < r.steps.length && currentStepElapsed >= r.steps[currentIndex].durationSec) {
+          currentStepElapsed -= r.steps[currentIndex].durationSec;
+          currentIndex++;
+          didBeep = true;
+        }
+
+        if (didBeep) {
           beep();
-          const nextIndex = nextRun.currentStepIndex + 1;
-          if (nextIndex >= r.steps.length) {
-            return { ...prev, activeRun: { ...nextRun, isRunning: false, currentStepIndex: nextIndex } };
-          }
+        }
+
+        if (currentIndex >= r.steps.length) {
           return {
             ...prev,
-            activeRun: { ...nextRun, currentStepIndex: nextIndex, stepElapsedSec: 0 },
+            activeRun: {
+              ...run,
+              elapsedSec: r.steps.reduce((a, s) => a + s.durationSec, 0),
+              stepElapsedSec: 0,
+              currentStepIndex: currentIndex,
+              isRunning: false,
+            },
           };
         }
 
-        return { ...prev, activeRun: nextRun };
+        return {
+          ...prev,
+          activeRun: {
+            ...run,
+            elapsedSec: currentElapsed,
+            stepElapsedSec: currentStepElapsed,
+            currentStepIndex: currentIndex,
+          },
+        };
       });
     }, 1000);
 
