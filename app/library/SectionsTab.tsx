@@ -232,6 +232,7 @@ export function SectionsTab() {
                   variant="default"
                   color="red"
                   onClick={() => {
+                    if (!window.confirm(`Are you sure you want to delete the section "${s.name}"?`)) return;
                     update((prev) => ({
                       ...prev,
                       stepLibrary: (prev.stepLibrary ?? []).filter((x) => x.id !== s.id),

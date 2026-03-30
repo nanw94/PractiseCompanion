@@ -111,6 +111,7 @@ export function FocusTab() {
                   variant="default"
                   color="red"
                   onClick={() => {
+                    if (!window.confirm(`Are you sure you want to delete the focus "${f.label}"?`)) return;
                     update((prev) => ({
                       ...prev,
                       focusLibrary: (prev.focusLibrary ?? []).filter((x) => x.id !== f.id),
