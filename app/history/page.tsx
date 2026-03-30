@@ -197,6 +197,7 @@ export default function HistoryPage() {
                           variant="default"
                           color="red"
                           onClick={() => {
+                            if (!window.confirm("Are you sure you want to delete this session?")) return;
                             update((prev) => ({
                               ...prev,
                               sessions: prev.sessions.filter((x) => x.id !== s.id),
