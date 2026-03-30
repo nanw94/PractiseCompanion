@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Card, Group, Stack, Text, TextInput } from "@mantine/core";
 import type { FocusItem } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
+import { modals } from "@mantine/modals";
 
 function newId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `${prefix}_${crypto.randomUUID()}`;
@@ -111,22 +112,29 @@ export function FocusTab() {
                   variant="default"
                   color="red"
                   onClick={() => {
-                    if (!window.confirm(`Are you sure you want to delete the focus "${f.label}"?`)) return;
-                    update((prev) => ({
-                      ...prev,
-                      focusLibrary: (prev.focusLibrary ?? []).filter((x) => x.id !== f.id),
-                      routines: (prev.routines ?? []).map((r) => ({
-                        ...r,
-                        steps: r.steps.map((s) => ({
-                          ...s,
-                          focusIds: s.focusIds.filter((id) => id !== f.id),
-                        })),
-                      })),
-                      stepLibrary: (prev.stepLibrary ?? []).map((s) => ({
-                        ...s,
-                        focusIds: s.focusIds.filter((id) => id !== f.id),
-                      })),
-                    }));
+                    modals.openConfirmModal({
+                      title: "Delete focus",
+                      children: <Text size="sm">Are you sure you want to delete the focus "{f.label}"?</Text>,
+                      labels: { confirm: "Delete", cancel: "Cancel" },
+                      confirmProps: { color: "red" },
+                      onConfirm: () => {
+                        update((prev) => ({
+                          ...prev,
+                          focusLibrary: (prev.focusLibrary ?? []).filter((x) => x.id !== f.id),
+                          routines: (prev.routines ?? []).map((r) => ({
+                            ...r,
+                            steps: r.steps.map((s) => ({
+                              ...s,
+                              focusIds: s.focusIds.filter((id) => id !== f.id),
+                            })),
+                          })),
+                          stepLibrary: (prev.stepLibrary ?? []).map((s) => ({
+                            ...s,
+                            focusIds: s.focusIds.filter((id) => id !== f.id),
+                          })),
+                        }));
+                      },
+                    });
                   }}
                 >
                   Delete

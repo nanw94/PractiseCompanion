@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Button, Card, Container, Group, Stack, Text, Title } from "@mantine/core";
 import { useAppData } from "@/hooks/useAppData";
+import { modals } from "@mantine/modals";
 
 function download(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json" });
@@ -86,18 +87,24 @@ export default function SettingsPage() {
             <Button
               color="red"
               onClick={() => {
-                const ok = window.confirm("Wipe all local data? This cannot be undone.");
-                if (!ok) return;
-                update((prev) => ({
-                  ...prev,
-                  sessions: [],
-                  presets: [],
-                  routines: [],
-                  stepLibrary: [],
-                  focusLibrary: [],
-                  activeRun: undefined,
-                  lastCompletedRun: undefined,
-                }));
+                modals.openConfirmModal({
+                  title: "Wipe all data",
+                  children: <Text size="sm">Wipe all local data? This cannot be undone.</Text>,
+                  labels: { confirm: "Wipe", cancel: "Cancel" },
+                  confirmProps: { color: "red" },
+                  onConfirm: () => {
+                    update((prev) => ({
+                      ...prev,
+                      sessions: [],
+                      presets: [],
+                      routines: [],
+                      stepLibrary: [],
+                      focusLibrary: [],
+                      activeRun: undefined,
+                      lastCompletedRun: undefined,
+                    }));
+                  },
+                });
               }}
             >
               Wipe all data

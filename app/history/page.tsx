@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Badge, Button, Card, Container, Group, Select, Stack, Tabs, Text, Title } from "@mantine/core";
 import { useAppData } from "@/hooks/useAppData";
 import { formatDuration } from "@/lib/time";
+import { modals } from "@mantine/modals";
 
 function dateLabel(iso: string) {
   const d = new Date(iso);
@@ -197,11 +198,18 @@ export default function HistoryPage() {
                           variant="default"
                           color="red"
                           onClick={() => {
-                            if (!window.confirm("Are you sure you want to delete this session?")) return;
-                            update((prev) => ({
-                              ...prev,
-                              sessions: prev.sessions.filter((x) => x.id !== s.id),
-                            }));
+                            modals.openConfirmModal({
+                              title: "Delete session",
+                              children: <Text size="sm">Are you sure you want to delete this session?</Text>,
+                              labels: { confirm: "Delete", cancel: "Cancel" },
+                              confirmProps: { color: "red" },
+                              onConfirm: () => {
+                                update((prev) => ({
+                                  ...prev,
+                                  sessions: prev.sessions.filter((x) => x.id !== s.id),
+                                }));
+                              },
+                            });
                           }}
                         >
                           Delete

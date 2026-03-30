@@ -17,6 +17,7 @@ import type { StepTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { formatDuration } from "@/lib/time";
 import { ImageUploadField } from "./ImageUploadField";
+import { modals } from "@mantine/modals";
 
 function newId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `${prefix}_${crypto.randomUUID()}`;
@@ -232,11 +233,18 @@ export function SectionsTab() {
                   variant="default"
                   color="red"
                   onClick={() => {
-                    if (!window.confirm(`Are you sure you want to delete the section "${s.name}"?`)) return;
-                    update((prev) => ({
-                      ...prev,
-                      stepLibrary: (prev.stepLibrary ?? []).filter((x) => x.id !== s.id),
-                    }));
+                    modals.openConfirmModal({
+                      title: "Delete section",
+                      children: <Text size="sm">Are you sure you want to delete the section "{s.name}"?</Text>,
+                      labels: { confirm: "Delete", cancel: "Cancel" },
+                      confirmProps: { color: "red" },
+                      onConfirm: () => {
+                        update((prev) => ({
+                          ...prev,
+                          stepLibrary: (prev.stepLibrary ?? []).filter((x) => x.id !== s.id),
+                        }));
+                      },
+                    });
                   }}
                 >
                   Delete

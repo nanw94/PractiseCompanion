@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@mantine/core/styles.css";
+import "@mantine/modals/styles.css";
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from "@mantine/core";
+import { ModalsProvider } from "@mantine/modals";
 import "./globals.css";
 import "./music-theme.css";
 import { practiceMantineTheme } from "@/lib/mantine-theme";
@@ -39,9 +41,11 @@ export default function RootLayout({
       </head>
       <body>
         <MantineProvider theme={practiceMantineTheme} defaultColorScheme="auto">
-          <AppDataProvider>
-            <AppFrame>{children}</AppFrame>
-          </AppDataProvider>
+          <ModalsProvider>
+            <AppDataProvider>
+              <AppFrame>{children}</AppFrame>
+            </AppDataProvider>
+          </ModalsProvider>
         </MantineProvider>
       </body>
     </html>

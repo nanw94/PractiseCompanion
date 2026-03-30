@@ -8,6 +8,8 @@ import { useAppData } from "@/hooks/useAppData";
 import { useActiveRun } from "@/hooks/useActiveRun";
 import { formatDuration } from "@/lib/time";
 
+import { modals } from "@mantine/modals";
+
 function newRoutineId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -77,8 +79,16 @@ export function RoutinesTab() {
                 <Button
                   onClick={() => {
                     if (activeRun) {
-                      const ok = window.confirm("Replace the current running routine?");
-                      if (!ok) return;
+                      modals.openConfirmModal({
+                        title: "Replace running routine?",
+                        children: <Text size="sm">This will end your current session.</Text>,
+                        labels: { confirm: "Replace", cancel: "Cancel" },
+                        onConfirm: () => {
+                          start(r.id);
+                          router.push("/");
+                        },
+                      });
+                      return;
                     }
                     start(r.id);
                     router.push("/");
@@ -93,16 +103,22 @@ export function RoutinesTab() {
                   variant="default"
                   color="red"
                   onClick={() => {
-                    const ok = window.confirm(`Delete routine "${r.name}"?`);
-                    if (!ok) return;
-                    update((prev) => {
-                      const nextRoutines = (prev.routines ?? []).filter((x) => x.id !== r.id);
-                      if (nextRoutines.length === 0) return prev;
-                      return {
-                        ...prev,
-                        routines: nextRoutines,
-                        activeRun: prev.activeRun?.routineId === r.id ? undefined : prev.activeRun,
-                      };
+                    modals.openConfirmModal({
+                      title: "Delete routine",
+                      children: <Text size="sm">Are you sure you want to delete the routine "{r.name}"?</Text>,
+                      labels: { confirm: "Delete", cancel: "Cancel" },
+                      confirmProps: { color: "red" },
+                      onConfirm: () => {
+                        update((prev) => {
+                          const nextRoutines = (prev.routines ?? []).filter((x) => x.id !== r.id);
+                          if (nextRoutines.length === 0) return prev;
+                          return {
+                            ...prev,
+                            routines: nextRoutines,
+                            activeRun: prev.activeRun?.routineId === r.id ? undefined : prev.activeRun,
+                          };
+                        });
+                      },
                     });
                   }}
                 >
