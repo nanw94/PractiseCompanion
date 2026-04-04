@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Button, Card, Container, Group, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Card, Container, Group, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { IconDownload, IconTrash, IconUpload } from "@tabler/icons-react";
 import { useAppData } from "@/hooks/useAppData";
 import { modals } from "@mantine/modals";
 
@@ -35,16 +36,21 @@ export default function SettingsPage() {
             </Text>
 
             <Group>
-              <Button
-                onClick={() => {
-                  download(
-                    `practice-companion-export-${new Date().toISOString()}.json`,
-                    JSON.stringify(data, null, 2),
-                  );
-                }}
-              >
-                Export JSON
-              </Button>
+              <Tooltip label="Export JSON">
+                <ActionIcon
+                  size="lg"
+                  variant="light"
+                  aria-label="Export JSON"
+                  onClick={() => {
+                    download(
+                      `practice-companion-export-${new Date().toISOString()}.json`,
+                      JSON.stringify(data, null, 2),
+                    );
+                  }}
+                >
+                  <IconDownload size={22} />
+                </ActionIcon>
+              </Tooltip>
 
               <input
                 ref={fileRef}
@@ -68,9 +74,16 @@ export default function SettingsPage() {
                 }}
               />
 
-              <Button variant="default" onClick={() => fileRef.current?.click()}>
-                Import JSON
-              </Button>
+              <Tooltip label="Import JSON">
+                <ActionIcon
+                  size="lg"
+                  variant="default"
+                  aria-label="Import JSON"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <IconUpload size={22} />
+                </ActionIcon>
+              </Tooltip>
             </Group>
 
             {error ? (
@@ -84,31 +97,36 @@ export default function SettingsPage() {
         <Card withBorder>
           <Stack gap="sm">
             <Title order={3}>Reset</Title>
-            <Button
-              color="red"
-              onClick={() => {
-                modals.openConfirmModal({
-                  title: "Wipe all data",
-                  children: <Text size="sm">Wipe all local data? This cannot be undone.</Text>,
-                  labels: { confirm: "Wipe", cancel: "Cancel" },
-                  confirmProps: { color: "red" },
-                  onConfirm: () => {
-                    update((prev) => ({
-                      ...prev,
-                      sessions: [],
-                      presets: [],
-                      routines: [],
-                      stepLibrary: [],
-                      focusLibrary: [],
-                      activeRun: undefined,
-                      lastCompletedRun: undefined,
-                    }));
-                  },
-                });
-              }}
-            >
-              Wipe all data
-            </Button>
+            <Tooltip label="Wipe all data">
+              <ActionIcon
+                color="red"
+                variant="light"
+                size="lg"
+                aria-label="Wipe all data"
+                onClick={() => {
+                  modals.openConfirmModal({
+                    title: "Wipe all data",
+                    children: <Text size="sm">Wipe all local data? This cannot be undone.</Text>,
+                    labels: { confirm: "Wipe", cancel: "Cancel" },
+                    confirmProps: { color: "red" },
+                    onConfirm: () => {
+                      update((prev) => ({
+                        ...prev,
+                        sessions: [],
+                        presets: [],
+                        routines: [],
+                        stepLibrary: [],
+                        focusLibrary: [],
+                        activeRun: undefined,
+                        lastCompletedRun: undefined,
+                      }));
+                    },
+                  });
+                }}
+              >
+                <IconTrash size={22} />
+              </ActionIcon>
+            </Tooltip>
           </Stack>
         </Card>
       </Stack>

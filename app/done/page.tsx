@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Button, Card, Container, Group, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Card, Container, Group, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { IconHome } from "@tabler/icons-react";
 import { useAppData } from "@/hooks/useAppData";
 import { resolveFocusLabels } from "@/lib/focus";
 import { formatDuration } from "@/lib/time";
@@ -18,9 +19,11 @@ export default function DonePage() {
         <Stack gap="md">
           <Title order={2}>Done</Title>
           <Text c="dimmed">No completed routine to show.</Text>
-          <Button variant="default" onClick={() => router.push("/")}>
-            Go home
-          </Button>
+          <Tooltip label="Go home">
+            <ActionIcon variant="default" size="lg" aria-label="Go home" onClick={() => router.push("/")}>
+              <IconHome size={22} />
+            </ActionIcon>
+          </Tooltip>
         </Stack>
       </Container>
     );

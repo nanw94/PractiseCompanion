@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Button, Group, Image, Progress, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Box, Group, Image, Progress, Stack, Text, Tooltip } from "@mantine/core";
+import {
+  IconArrowLeft,
+  IconCheck,
+  IconPlayerPause,
+  IconPlayerPlay,
+  IconPlayerSkipForward,
+} from "@tabler/icons-react";
 import { useActiveRun } from "@/hooks/useActiveRun";
 import { useAppData } from "@/hooks/useAppData";
 import { resolveFocusLabels } from "@/lib/focus";
@@ -218,32 +225,44 @@ export function PracticeRunner() {
         </Box>
       </Box>
 
-      <Group justify="center" gap="xs" py="md" wrap="wrap">
-        <Button variant="default" size="sm" onClick={prev}>
-          Back
-        </Button>
+      <Group justify="center" gap="sm" py="md" wrap="wrap">
+        <Tooltip label="Previous section">
+          <ActionIcon variant="default" size="lg" aria-label="Previous section" onClick={prev}>
+            <IconArrowLeft size={22} />
+          </ActionIcon>
+        </Tooltip>
         {activeRun.isRunning ? (
-          <Button variant="default" size="sm" onClick={pause}>
-            Pause
-          </Button>
+          <Tooltip label="Pause">
+            <ActionIcon variant="default" size="lg" aria-label="Pause" onClick={pause}>
+              <IconPlayerPause size={22} />
+            </ActionIcon>
+          </Tooltip>
         ) : (
-          <Button size="sm" onClick={resume}>
-            Resume
-          </Button>
+          <Tooltip label="Resume">
+            <ActionIcon size="lg" variant="light" color="burgundy" aria-label="Resume" onClick={resume}>
+              <IconPlayerPlay size={22} />
+            </ActionIcon>
+          </Tooltip>
         )}
-        <Button variant="default" size="sm" onClick={next}>
-          Skip
-        </Button>
-        <Button
-          color="green"
-          size="sm"
-          onClick={() => {
-            finish();
-            router.push("/done");
-          }}
-        >
-          Finish
-        </Button>
+        <Tooltip label="Skip section">
+          <ActionIcon variant="default" size="lg" aria-label="Skip section" onClick={next}>
+            <IconPlayerSkipForward size={22} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Finish routine">
+          <ActionIcon
+            color="green"
+            variant="light"
+            size="lg"
+            aria-label="Finish routine"
+            onClick={() => {
+              finish();
+              router.push("/done");
+            }}
+          >
+            <IconCheck size={22} />
+          </ActionIcon>
+        </Tooltip>
       </Group>
 
       <Box mt="auto" pt="xs">

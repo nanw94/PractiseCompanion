@@ -36,6 +36,8 @@ export type RoutineStep = {
   focusIds: Id[];
   note?: string;
   imageDataUrl?: string;
+  /** When set, this canvas step is tied to a Library section template (Sections / drag from library). */
+  sectionTemplateId?: Id;
 };
 
 export type StepTemplate = {

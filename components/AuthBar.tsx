@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button, Group, Text } from "@mantine/core";
+import { ActionIcon, Badge, Group, Text, Tooltip } from "@mantine/core";
+import { IconLogin, IconLogout } from "@tabler/icons-react";
 import { useAppData } from "@/components/AppDataProvider";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -63,26 +64,31 @@ export function AuthBar() {
         <Text size="xs" c="dimmed" visibleFrom="sm" lineClamp={1} maw={140}>
           {email}
         </Text>
-        <Button
-          size="compact-xs"
-          variant="subtle"
-          onClick={async () => {
-            signingOutRef.current = true;
-            if (cloudSyncEnabled) await flushCloudSync();
-            const supabase = createClient();
-            await supabase?.auth.signOut({ scope: "global" });
-            router.push("/signed-out");
-          }}
-        >
-          Sign out
-        </Button>
+        <Tooltip label="Sign out">
+          <ActionIcon
+            size="md"
+            variant="subtle"
+            aria-label="Sign out"
+            onClick={async () => {
+              signingOutRef.current = true;
+              if (cloudSyncEnabled) await flushCloudSync();
+              const supabase = createClient();
+              await supabase?.auth.signOut({ scope: "global" });
+              router.push("/signed-out");
+            }}
+          >
+            <IconLogout size={20} />
+          </ActionIcon>
+        </Tooltip>
       </Group>
     );
   }
 
   return (
-    <Button component={Link} href="/login" size="compact-xs" variant="light">
-      Sign in
-    </Button>
+    <Tooltip label="Sign in">
+      <ActionIcon component={Link} href="/login" variant="light" size="md" aria-label="Sign in">
+        <IconLogin size={20} />
+      </ActionIcon>
+    </Tooltip>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Group, Stack, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Button, Card, Group, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { IconPencil, IconPlayerPlay, IconTrash } from "@tabler/icons-react";
 import type { RoutineTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { useActiveRun } from "@/hooks/useActiveRun";
@@ -75,55 +76,72 @@ export function RoutinesTab() {
                   {r.steps.length} sections · {formatDuration(r.totalDurationSec)}
                 </Text>
               </Stack>
-              <Group>
-                <Button
-                  onClick={() => {
-                    if (activeRun) {
+              <Group gap={6}>
+                <Tooltip label="Start routine">
+                  <ActionIcon
+                    variant="light"
+                    color="burgundy"
+                    size="lg"
+                    aria-label="Start routine"
+                    onClick={() => {
+                      if (activeRun) {
+                        modals.openConfirmModal({
+                          title: "Replace running routine?",
+                          children: <Text size="sm">This will end your current session.</Text>,
+                          labels: { confirm: "Replace", cancel: "Cancel" },
+                          onConfirm: () => {
+                            start(r.id);
+                            router.push("/");
+                          },
+                        });
+                        return;
+                      }
+                      start(r.id);
+                      router.push("/");
+                    }}
+                  >
+                    <IconPlayerPlay size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Edit routine">
+                  <ActionIcon
+                    variant="default"
+                    size="lg"
+                    aria-label="Edit routine"
+                    onClick={() => router.push(`/routines/${r.id}`)}
+                  >
+                    <IconPencil size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Delete routine">
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="lg"
+                    aria-label="Delete routine"
+                    onClick={() => {
                       modals.openConfirmModal({
-                        title: "Replace running routine?",
-                        children: <Text size="sm">This will end your current session.</Text>,
-                        labels: { confirm: "Replace", cancel: "Cancel" },
+                        title: "Delete routine",
+                        children: <Text size="sm">Are you sure you want to delete the routine "{r.name}"?</Text>,
+                        labels: { confirm: "Delete", cancel: "Cancel" },
+                        confirmProps: { color: "red" },
                         onConfirm: () => {
-                          start(r.id);
-                          router.push("/");
+                          update((prev) => {
+                            const nextRoutines = (prev.routines ?? []).filter((x) => x.id !== r.id);
+                            if (nextRoutines.length === 0) return prev;
+                            return {
+                              ...prev,
+                              routines: nextRoutines,
+                              activeRun: prev.activeRun?.routineId === r.id ? undefined : prev.activeRun,
+                            };
+                          });
                         },
                       });
-                      return;
-                    }
-                    start(r.id);
-                    router.push("/");
-                  }}
-                >
-                  Start
-                </Button>
-                <Button variant="default" onClick={() => router.push(`/routines/${r.id}`)}>
-                  Edit
-                </Button>
-                <Button
-                  variant="default"
-                  color="red"
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: "Delete routine",
-                      children: <Text size="sm">Are you sure you want to delete the routine "{r.name}"?</Text>,
-                      labels: { confirm: "Delete", cancel: "Cancel" },
-                      confirmProps: { color: "red" },
-                      onConfirm: () => {
-                        update((prev) => {
-                          const nextRoutines = (prev.routines ?? []).filter((x) => x.id !== r.id);
-                          if (nextRoutines.length === 0) return prev;
-                          return {
-                            ...prev,
-                            routines: nextRoutines,
-                            activeRun: prev.activeRun?.routineId === r.id ? undefined : prev.activeRun,
-                          };
-                        });
-                      },
-                    });
-                  }}
-                >
-                  Delete
-                </Button>
+                    }}
+                  >
+                    <IconTrash size={20} />
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Group>
           </Card>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ActionIcon, AppShell, Badge, Group, Text, UnstyledButton } from "@mantine/core";
 import { useMemo } from "react";
@@ -25,6 +26,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const hasActiveRoutine = data.activeRun != null;
 
   const active = useMemo(() => {
+    if (pathname?.startsWith("/routines")) return "/library";
     const found = NAV_ITEMS.find((i) => i.href === pathname);
     return found?.href ?? "/";
   }, [pathname]);
@@ -54,10 +56,12 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
           {NAV_ITEMS.map((item) => (
             <ActionIcon
               key={item.href}
+              component={Link}
+              href={item.href}
+              prefetch
               variant={active === item.href ? "filled" : "subtle"}
               size="lg"
               aria-label={item.label}
-              onClick={() => router.push(item.href)}
             >
               <Text size="sm">{item.label}</Text>
             </ActionIcon>

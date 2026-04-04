@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Button, Card, Container, Group, Select, Stack, Tabs, Text, Title } from "@mantine/core";
+import { ActionIcon, Badge, Card, Container, Group, Select, Stack, Tabs, Text, Title, Tooltip } from "@mantine/core";
+import { IconTrash } from "@tabler/icons-react";
 import { useAppData } from "@/hooks/useAppData";
 import { formatDuration } from "@/lib/time";
 import { modals } from "@mantine/modals";
@@ -194,26 +195,29 @@ export default function HistoryPage() {
                       </Group>
 
                       <Group justify="flex-end">
-                        <Button
-                          variant="default"
-                          color="red"
-                          onClick={() => {
-                            modals.openConfirmModal({
-                              title: "Delete session",
-                              children: <Text size="sm">Are you sure you want to delete this session?</Text>,
-                              labels: { confirm: "Delete", cancel: "Cancel" },
-                              confirmProps: { color: "red" },
-                              onConfirm: () => {
-                                update((prev) => ({
-                                  ...prev,
-                                  sessions: prev.sessions.filter((x) => x.id !== s.id),
-                                }));
-                              },
-                            });
-                          }}
-                        >
-                          Delete
-                        </Button>
+                        <Tooltip label="Delete session">
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            aria-label="Delete session"
+                            onClick={() => {
+                              modals.openConfirmModal({
+                                title: "Delete session",
+                                children: <Text size="sm">Are you sure you want to delete this session?</Text>,
+                                labels: { confirm: "Delete", cancel: "Cancel" },
+                                confirmProps: { color: "red" },
+                                onConfirm: () => {
+                                  update((prev) => ({
+                                    ...prev,
+                                    sessions: prev.sessions.filter((x) => x.id !== s.id),
+                                  }));
+                                },
+                              });
+                            }}
+                          >
+                            <IconTrash size={20} />
+                          </ActionIcon>
+                        </Tooltip>
                       </Group>
                     </Stack>
                   </Card>

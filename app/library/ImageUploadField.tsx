@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Group, Image, Stack, Text } from "@mantine/core";
+import { ActionIcon, Group, Image, Stack, Text, Tooltip } from "@mantine/core";
+import { IconPhotoPlus, IconTrash } from "@tabler/icons-react";
 import { compressImage } from "@/lib/compress-image";
 
 export function ImageUploadField({
@@ -26,12 +27,14 @@ export function ImageUploadField({
             fit="contain"
             style={{ maxWidth: 160, border: "1px solid var(--music-surface-border, #dee2e6)", borderRadius: 8 }}
           />
-          <Button size="xs" variant="subtle" color="red" onClick={() => onChange(null)}>
-            Remove image
-          </Button>
+          <Tooltip label="Remove image">
+            <ActionIcon size="md" variant="subtle" color="red" aria-label="Remove image" onClick={() => onChange(null)}>
+              <IconTrash size={20} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
       ) : (
-        <label style={{ display: "inline-block" }}>
+        <label style={{ display: "inline-flex", cursor: "pointer" }}>
           <input
             type="file"
             accept="image/*"
@@ -48,9 +51,11 @@ export function ImageUploadField({
               e.currentTarget.value = "";
             }}
           />
-          <Button size="sm" variant="default" component="span">
-            Upload image
-          </Button>
+          <Tooltip label="Upload image">
+            <ActionIcon component="span" size="lg" variant="default" aria-label="Upload image">
+              <IconPhotoPlus size={22} />
+            </ActionIcon>
+          </Tooltip>
         </label>
       )}
     </Stack>

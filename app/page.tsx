@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Container, Group, Select, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Button, Card, Container, Group, Select, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { IconBooks } from "@tabler/icons-react";
 import { useActiveRun } from "@/hooks/useActiveRun";
 import { useAppData } from "@/hooks/useAppData";
 import { PracticeRunner } from "@/components/PracticeRunner";
@@ -67,9 +68,16 @@ export default function HomePage() {
               >
                 Start routine
               </Button>
-              <Button variant="default" onClick={() => router.push("/library?tab=routines")}>
-                Manage in Library
-              </Button>
+              <Tooltip label="Manage routines in Library">
+                <ActionIcon
+                  variant="default"
+                  size="lg"
+                  aria-label="Manage routines in Library"
+                  onClick={() => router.push("/library?tab=routines")}
+                >
+                  <IconBooks size={22} />
+                </ActionIcon>
+              </Tooltip>
             </Stack>
           </Card>
         ) : null}

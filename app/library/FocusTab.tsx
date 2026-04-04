@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Group, Stack, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Button, Card, Group, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { IconCheck, IconPencil, IconTrash, IconX } from "@tabler/icons-react";
 import type { FocusItem } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { modals } from "@mantine/modals";
@@ -68,77 +69,95 @@ export function FocusTab() {
                 <Text fw={600}>{f.label}</Text>
               )}
 
-              <Group>
+              <Group gap={6}>
                 {editingFocusId === f.id ? (
                   <>
-                    <Button
-                      variant="default"
-                      onClick={() => {
-                        setEditingFocusId(null);
-                        setEditingFocusLabel("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        const label = editingFocusLabel.trim();
-                        if (!label) return;
-                        update((prev) => ({
-                          ...prev,
-                          focusLibrary: (prev.focusLibrary ?? []).map((x) =>
-                            x.id === f.id ? { ...x, label } : x,
-                          ),
-                        }));
-                        setEditingFocusId(null);
-                        setEditingFocusLabel("");
-                      }}
-                    >
-                      Save
-                    </Button>
+                    <Tooltip label="Cancel">
+                      <ActionIcon
+                        variant="default"
+                        size="lg"
+                        aria-label="Cancel"
+                        onClick={() => {
+                          setEditingFocusId(null);
+                          setEditingFocusLabel("");
+                        }}
+                      >
+                        <IconX size={20} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Save">
+                      <ActionIcon
+                        size="lg"
+                        variant="light"
+                        color="burgundy"
+                        aria-label="Save"
+                        onClick={() => {
+                          const label = editingFocusLabel.trim();
+                          if (!label) return;
+                          update((prev) => ({
+                            ...prev,
+                            focusLibrary: (prev.focusLibrary ?? []).map((x) =>
+                              x.id === f.id ? { ...x, label } : x,
+                            ),
+                          }));
+                          setEditingFocusId(null);
+                          setEditingFocusLabel("");
+                        }}
+                      >
+                        <IconCheck size={20} />
+                      </ActionIcon>
+                    </Tooltip>
                   </>
                 ) : (
-                  <Button
-                    variant="default"
-                    onClick={() => {
-                      setEditingFocusId(f.id);
-                      setEditingFocusLabel(f.label);
-                    }}
-                  >
-                    Edit
-                  </Button>
+                  <Tooltip label="Edit focus">
+                    <ActionIcon
+                      variant="default"
+                      size="lg"
+                      aria-label="Edit focus"
+                      onClick={() => {
+                        setEditingFocusId(f.id);
+                        setEditingFocusLabel(f.label);
+                      }}
+                    >
+                      <IconPencil size={20} />
+                    </ActionIcon>
+                  </Tooltip>
                 )}
-                <Button
-                  variant="default"
-                  color="red"
-                  onClick={() => {
-                    modals.openConfirmModal({
-                      title: "Delete focus",
-                      children: <Text size="sm">Are you sure you want to delete the focus "{f.label}"?</Text>,
-                      labels: { confirm: "Delete", cancel: "Cancel" },
-                      confirmProps: { color: "red" },
-                      onConfirm: () => {
-                        update((prev) => ({
-                          ...prev,
-                          focusLibrary: (prev.focusLibrary ?? []).filter((x) => x.id !== f.id),
-                          routines: (prev.routines ?? []).map((r) => ({
-                            ...r,
-                            steps: r.steps.map((s) => ({
+                <Tooltip label="Delete focus">
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="lg"
+                    aria-label="Delete focus"
+                    onClick={() => {
+                      modals.openConfirmModal({
+                        title: "Delete focus",
+                        children: <Text size="sm">Are you sure you want to delete the focus "{f.label}"?</Text>,
+                        labels: { confirm: "Delete", cancel: "Cancel" },
+                        confirmProps: { color: "red" },
+                        onConfirm: () => {
+                          update((prev) => ({
+                            ...prev,
+                            focusLibrary: (prev.focusLibrary ?? []).filter((x) => x.id !== f.id),
+                            routines: (prev.routines ?? []).map((r) => ({
+                              ...r,
+                              steps: r.steps.map((s) => ({
+                                ...s,
+                                focusIds: s.focusIds.filter((id) => id !== f.id),
+                              })),
+                            })),
+                            stepLibrary: (prev.stepLibrary ?? []).map((s) => ({
                               ...s,
                               focusIds: s.focusIds.filter((id) => id !== f.id),
                             })),
-                          })),
-                          stepLibrary: (prev.stepLibrary ?? []).map((s) => ({
-                            ...s,
-                            focusIds: s.focusIds.filter((id) => id !== f.id),
-                          })),
-                        }));
-                      },
-                    });
-                  }}
-                >
-                  Delete
-                </Button>
+                          }));
+                        },
+                      });
+                    }}
+                  >
+                    <IconTrash size={20} />
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Group>
           </Card>
