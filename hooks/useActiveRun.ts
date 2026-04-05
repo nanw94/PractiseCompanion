@@ -32,8 +32,10 @@ function beep() {
 }
 
 export function useActiveRun() {
-  const { data, update } = useAppData();
+  const { data, updateRun, commit } = useAppData();
   const tickRef = useRef<number | null>(null);
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
 
   const routines = data.routines ?? [];
   const activeRun = data.activeRun ?? null;
@@ -41,8 +43,8 @@ export function useActiveRun() {
     activeRun ? routines.find((r) => r.id === activeRun.routineId) ?? null : null;
 
   const start = useCallback(
-    (routineId: string) => {
-      update((prev) => ({
+    async (routineId: string) => {
+      updateRun((prev) => ({
         ...prev,
         activeRun: {
           routineId,
@@ -53,27 +55,30 @@ export function useActiveRun() {
           stepElapsedSec: 0,
         },
       }));
+      await commit();
     },
-    [update],
+    [updateRun, commit],
   );
 
-  const pause = useCallback(() => {
-    update((prev) => {
+  const pause = useCallback(async () => {
+    updateRun((prev) => {
       if (!prev.activeRun) return prev;
       return { ...prev, activeRun: { ...prev.activeRun, isRunning: false } };
     });
-  }, [update]);
+    await commit();
+  }, [updateRun, commit]);
 
-  const resume = useCallback(() => {
-    update((prev) => {
+  const resume = useCallback(async () => {
+    updateRun((prev) => {
       if (!prev.activeRun) return prev;
       return { ...prev, activeRun: { ...prev.activeRun, isRunning: true } };
     });
-  }, [update]);
+    await commit();
+  }, [updateRun, commit]);
 
   const goToStep = useCallback(
     (index: number) => {
-      update((prev) => {
+      updateRun((prev) => {
         if (!prev.activeRun) return prev;
         return {
           ...prev,
@@ -85,21 +90,23 @@ export function useActiveRun() {
         };
       });
     },
-    [update],
+    [updateRun],
   );
 
-  const next = useCallback(() => {
+  const next = useCallback(async () => {
     if (!routine || !activeRun) return;
     goToStep(activeRun.currentStepIndex + 1);
-  }, [routine, activeRun, goToStep]);
+    await commit();
+  }, [routine, activeRun, goToStep, commit]);
 
-  const prev = useCallback(() => {
+  const prev = useCallback(async () => {
     if (!routine || !activeRun) return;
     goToStep(Math.max(0, activeRun.currentStepIndex - 1));
-  }, [routine, activeRun, goToStep]);
+    await commit();
+  }, [routine, activeRun, goToStep, commit]);
 
-  const finish = useCallback(() => {
-    update((prev) => {
+  const finish = useCallback(async () => {
+    updateRun((prev) => {
       const run = prev.activeRun;
       if (!run) return prev;
       const r = (prev.routines ?? []).find((x) => x.id === run.routineId);
@@ -133,7 +140,8 @@ export function useActiveRun() {
         activeRun: undefined,
       };
     });
-  }, [update]);
+    await commit();
+  }, [updateRun, commit]);
 
   useEffect(() => {
     if (!activeRun?.isRunning || !routine) return;
@@ -152,7 +160,7 @@ export function useActiveRun() {
       const addSec = Math.floor(accumulatedMs / 1000);
       accumulatedMs -= addSec * 1000;
 
-      update((prev) => {
+      updateRun((prev) => {
         const run = prev.activeRun;
         if (!run?.isRunning) return prev;
         const r = (prev.routines ?? []).find((x) => x.id === run.routineId);
@@ -177,6 +185,7 @@ export function useActiveRun() {
         }
 
         if (currentIndex >= r.steps.length) {
+          queueMicrotask(() => void commitRef.current());
           return {
             ...prev,
             activeRun: {
@@ -205,7 +214,7 @@ export function useActiveRun() {
       if (tickRef.current != null) window.clearInterval(tickRef.current);
       tickRef.current = null;
     };
-  }, [activeRun?.isRunning, routine, update]);
+  }, [activeRun?.isRunning, routine, updateRun]);
 
   const totalDurationSec = routine?.steps.reduce((acc, s) => acc + s.durationSec, 0) ?? 0;
 

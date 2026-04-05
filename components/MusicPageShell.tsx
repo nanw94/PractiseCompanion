@@ -6,14 +6,16 @@ import { Group, Stack, Text, Title } from "@mantine/core";
 type MusicPageShellProps = {
   eyebrow?: string;
   title?: string;
+  /** When set, replaces the string `title` (e.g. editable name field). */
+  titleSlot?: ReactNode;
   hint?: string;
   trailing?: ReactNode;
   children: ReactNode;
 };
 
 /** Themed page header + content wrapper. See docs/music-theme-template.md. */
-export function MusicPageShell({ eyebrow, title, hint, trailing, children }: MusicPageShellProps) {
-  const hasHeader = eyebrow || title || hint || trailing;
+export function MusicPageShell({ eyebrow, title, titleSlot, hint, trailing, children }: MusicPageShellProps) {
+  const hasHeader = eyebrow || title || titleSlot || hint || trailing;
 
   return (
     <Stack gap="lg" className="music-page-shell" pt="xs">
@@ -25,7 +27,9 @@ export function MusicPageShell({ eyebrow, title, hint, trailing, children }: Mus
                 {eyebrow}
               </Text>
             ) : null}
-            {title ? (
+            {titleSlot ? (
+              <div className="music-page-title-slot">{titleSlot}</div>
+            ) : title ? (
               <Title order={2} className="music-page-title">
                 {title}
               </Title>

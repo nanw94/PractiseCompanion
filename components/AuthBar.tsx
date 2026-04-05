@@ -6,12 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, Badge, Group, Text, Tooltip } from "@mantine/core";
 import { IconLogin, IconLogout } from "@tabler/icons-react";
 import { useAppData } from "@/components/AppDataProvider";
+import { displayAuthEmail } from "@/lib/auth-email";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function AuthBar() {
   const router = useRouter();
-  const { flushCloudSync, cloudSyncEnabled, syncStatus } = useAppData();
-  const [email, setEmail] = useState<string | null>(null);
+  const { commit, cloudSyncEnabled, syncStatus } = useAppData();
+  const [accountLabel, setAccountLabel] = useState<string | null>(null);
   const signingOutRef = useRef(false);
 
   useEffect(() => {
@@ -22,7 +23,15 @@ export function AuthBar() {
 
     const refresh = () => {
       void supabase.auth.getUser().then(({ data: { user } }) => {
-        setEmail(user?.email ?? null);
+        const meta = user?.user_metadata?.username;
+        const em = user?.email ?? null;
+        if (typeof meta === "string" && meta.trim()) {
+          setAccountLabel(meta.trim());
+        } else if (em) {
+          setAccountLabel(displayAuthEmail(em));
+        } else {
+          setAccountLabel(null);
+        }
       });
     };
 
@@ -45,7 +54,7 @@ export function AuthBar() {
     );
   }
 
-  if (email) {
+  if (accountLabel) {
     return (
       <Group gap="xs" wrap="nowrap">
         {syncStatus === "saving" ? (
@@ -62,7 +71,7 @@ export function AuthBar() {
           </Badge>
         ) : null}
         <Text size="xs" c="dimmed" visibleFrom="sm" lineClamp={1} maw={140}>
-          {email}
+          {accountLabel}
         </Text>
         <Tooltip label="Sign out">
           <ActionIcon
@@ -71,7 +80,7 @@ export function AuthBar() {
             aria-label="Sign out"
             onClick={async () => {
               signingOutRef.current = true;
-              if (cloudSyncEnabled) await flushCloudSync();
+              if (cloudSyncEnabled) await commit();
               const supabase = createClient();
               await supabase?.auth.signOut({ scope: "global" });
               router.push("/signed-out");

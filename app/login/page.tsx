@@ -14,6 +14,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { usernameToAuthEmail } from "@/lib/auth-email";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type Mode = "signin" | "signup";
@@ -24,7 +25,7 @@ function LoginContent() {
   const authError = searchParams.get("error");
 
   const [mode, setMode] = useState<Mode>("signin");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -48,8 +49,9 @@ function LoginContent() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       setFormError(null);
-      if (!email.trim() || !password) {
-        setFormError("Email and password are required.");
+      const u = username.trim();
+      if (!u || !password) {
+        setFormError("Username and password are required.");
         return;
       }
       setLoading(true);
@@ -57,16 +59,24 @@ function LoginContent() {
       const supabase = createClient();
       if (!supabase) return;
 
+      const authEmail = usernameToAuthEmail(u);
+
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail,
+          password,
+          options: { data: { username: u } },
+        });
         setLoading(false);
         if (error) {
           setFormError(error.message);
+        } else if (data.session) {
+          router.push("/");
         } else {
           setSignupSuccess(true);
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
         setLoading(false);
         if (error) {
           setFormError(error.message);
@@ -75,7 +85,7 @@ function LoginContent() {
         }
       }
     },
-    [email, password, mode, router],
+    [username, password, mode, router],
   );
 
   if (!isSupabaseConfigured()) {
@@ -93,8 +103,8 @@ function LoginContent() {
     return (
       <Container size="xs" py="xl">
         <Alert title="Check your email" color="green">
-          We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back to
-          sign in.
+          We sent a confirmation link to <strong>{usernameToAuthEmail(username.trim())}</strong>. Click it to activate
+          your account, then come back to sign in.
         </Alert>
         <Button mt="md" variant="subtle" onClick={() => setSignupSuccess(false)}>
           Back to sign in
@@ -123,18 +133,21 @@ function LoginContent() {
           Continue with Google
         </Button>
 
-        <Divider label="or use email" labelPosition="center" />
+        <Divider label="or username" labelPosition="center" />
 
         <form onSubmit={(e) => void handleEmailAuth(e)}>
           <Stack gap="sm">
             <TextInput
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
+              label="Username"
+              placeholder="your-name"
+              value={username}
+              onChange={(e) => setUsername(e.currentTarget.value)}
+              autoComplete="username"
               required
             />
+            <Text size="xs" c="dimmed">
+              We sign you in with a private address on our domain (you never manage email for it).
+            </Text>
             <PasswordInput
               label="Password"
               placeholder={mode === "signup" ? "At least 6 characters" : "Your password"}

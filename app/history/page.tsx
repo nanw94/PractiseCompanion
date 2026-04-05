@@ -31,7 +31,7 @@ function monthLabel(year: number, month: number) {
 }
 
 export default function HistoryPage() {
-  const { data, update } = useAppData();
+  const { data, update, commit } = useAppData();
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [tab, setTab] = useState<HistoryTab>("chart");
 
@@ -211,6 +211,7 @@ export default function HistoryPage() {
                                     ...prev,
                                     sessions: prev.sessions.filter((x) => x.id !== s.id),
                                   }));
+                                  void commit();
                                 },
                               });
                             }}

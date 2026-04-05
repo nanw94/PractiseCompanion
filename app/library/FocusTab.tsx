@@ -13,7 +13,7 @@ function newId(prefix: string) {
 }
 
 export function FocusTab() {
-  const { data, update } = useAppData();
+  const { data, update, commit } = useAppData();
 
   const focusLibrary = data.focusLibrary ?? [];
 
@@ -47,6 +47,7 @@ export function FocusTab() {
                   return { ...prev, focusLibrary: [item, ...(prev.focusLibrary ?? [])] };
                 });
                 setFocusLabel("");
+                void commit();
               }}
             >
               Add
@@ -102,6 +103,7 @@ export function FocusTab() {
                           }));
                           setEditingFocusId(null);
                           setEditingFocusLabel("");
+                          void commit();
                         }}
                       >
                         <IconCheck size={20} />
@@ -151,6 +153,7 @@ export function FocusTab() {
                               focusIds: s.focusIds.filter((id) => id !== f.id),
                             })),
                           }));
+                          void commit();
                         },
                       });
                     }}

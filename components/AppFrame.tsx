@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ActionIcon, AppShell, Badge, Group, Text, UnstyledButton } from "@mantine/core";
-import { useMemo } from "react";
+import { ActionIcon, AppShell, Badge, Button, Group, Text, UnstyledButton } from "@mantine/core";
+import { useEffect, useMemo } from "react";
 import { AuthBar } from "@/components/AuthBar";
 import { useAppData } from "@/components/AppDataProvider";
+import { useGuardedNavigate } from "@/hooks/useGuardedNavigate";
 
 type NavItem = {
   label: string;
@@ -22,7 +22,8 @@ const NAV_ITEMS: NavItem[] = [
 export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data } = useAppData();
+  const guardedPush = useGuardedNavigate();
+  const { data, dirty, commit, cloudSyncEnabled } = useAppData();
   const hasActiveRoutine = data.activeRun != null;
 
   const active = useMemo(() => {
@@ -30,6 +31,20 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     const found = NAV_ITEMS.find((i) => i.href === pathname);
     return found?.href ?? "/";
   }, [pathname]);
+
+  useEffect(() => {
+    NAV_ITEMS.forEach((item) => router.prefetch(item.href));
+  }, [router]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
 
   return (
     <AppShell header={{ height: 56 }} footer={{ height: 56 }} padding="md">
@@ -39,8 +54,13 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
             Practice Companion
           </Text>
           <Group gap="sm" wrap="nowrap">
+            {dirty && cloudSyncEnabled ? (
+              <Button size="xs" variant="light" onClick={() => void commit()}>
+                Save
+              </Button>
+            ) : null}
             {hasActiveRoutine ? (
-              <UnstyledButton onClick={() => router.push("/")}>
+              <UnstyledButton onClick={() => guardedPush("/")}>
                 <Badge variant="filled">Routine running</Badge>
               </UnstyledButton>
             ) : null}
@@ -56,12 +76,10 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
           {NAV_ITEMS.map((item) => (
             <ActionIcon
               key={item.href}
-              component={Link}
-              href={item.href}
-              prefetch
               variant={active === item.href ? "filled" : "subtle"}
               size="lg"
               aria-label={item.label}
+              onClick={() => guardedPush(item.href)}
             >
               <Text size="sm">{item.label}</Text>
             </ActionIcon>

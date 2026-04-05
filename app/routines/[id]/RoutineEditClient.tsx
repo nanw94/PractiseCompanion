@@ -49,6 +49,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { AppData, FocusItem, RoutineStep, RoutineTemplate, StepTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
+import { useGuardedNavigate } from "@/hooks/useGuardedNavigate";
 import { formatDuration } from "@/lib/time";
 import { MusicPageShell } from "@/components/MusicPageShell";
 import { ImageUploadField } from "@/app/library/ImageUploadField";
@@ -139,7 +140,12 @@ function EditSavedSectionForm({
   );
 }
 
-function openEditSavedSectionModal(tpl: StepTemplate, focusLibrary: FocusItem[], update: UpdateFn) {
+function openEditSavedSectionModal(
+  tpl: StepTemplate,
+  focusLibrary: FocusItem[],
+  update: UpdateFn,
+  commit: () => Promise<boolean>,
+) {
   modals.open({
     title: "Edit saved section",
     size: "md",
@@ -153,6 +159,7 @@ function openEditSavedSectionModal(tpl: StepTemplate, focusLibrary: FocusItem[],
             ...prev,
             stepLibrary: (prev.stepLibrary ?? []).map((x) => (x.id === next.id ? next : x)),
           }));
+          void commit();
           modals.closeAll();
         }}
       />
@@ -248,7 +255,8 @@ export default function RoutineEditPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
-  const { data, update } = useAppData();
+  const { data, update, commit } = useAppData();
+  const guardedPush = useGuardedNavigate();
   const routine = (data.routines ?? []).find((r) => r.id === id) ?? null;
   const focusLibrary = data.focusLibrary ?? [];
   const stepLibrary = data.stepLibrary ?? [];
@@ -369,7 +377,22 @@ export default function RoutineEditPage() {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <MusicPageShell
           eyebrow="Edit routine"
-          title={routine.name}
+          titleSlot={
+            <TextInput
+              label="Routine name"
+              size="lg"
+              className="music-page-title"
+              placeholder="Name this routine"
+              value={routine.name}
+              onChange={(e) =>
+                updateRoutine({
+                  ...routine,
+                  name: e.currentTarget.value,
+                })
+              }
+              styles={{ input: { fontSize: "var(--mantine-h2-font-size)", fontWeight: 600 } }}
+            />
+          }
           hint="Drag saved sections into the canvas. Use ⠿ to reorder."
           trailing={
             <Text size="sm" fw={600} className="music-hint">
@@ -383,6 +406,7 @@ export default function RoutineEditPage() {
                 stepLibrary={stepLibrary}
                 focusLibrary={focusLibrary}
                 update={update}
+                commit={commit}
               />
               <RoutineDropzone>
                 <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
@@ -404,7 +428,10 @@ export default function RoutineEditPage() {
                           clampedMin={clampedMin}
                           onDurationChange={(n) => updateStepDuration(s.id, n * 60)}
                           onEdit={() =>
-                            openEditCanvasStepModal(s, focusLibrary, (next) => updateCanvasStep(s.id, next))
+                            openEditCanvasStepModal(s, focusLibrary, (next) => {
+                              updateCanvasStep(s.id, next);
+                              void commit();
+                            })
                           }
                           onRemove={() => removeStep(s.id)}
                         />
@@ -418,21 +445,24 @@ export default function RoutineEditPage() {
             <Group justify="space-between">
               <Tooltip label="Back to Library">
                 <ActionIcon
-                  component={Link}
-                  href="/library?tab=routines"
-                  prefetch
                   variant="default"
                   size="lg"
                   aria-label="Back to Library"
+                  onClick={() => guardedPush("/library?tab=routines")}
                 >
                   <IconArrowLeft size={22} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Done">
-                <ActionIcon component={Link} href="/" prefetch size="lg" aria-label="Done">
-                  <IconCheck size={22} />
-                </ActionIcon>
-              </Tooltip>
+              <Group gap="sm">
+                <Button variant="light" color="burgundy" size="sm" onClick={() => void commit()}>
+                  Save routine
+                </Button>
+                <Tooltip label="Done">
+                  <ActionIcon size="lg" aria-label="Done" onClick={() => guardedPush("/")}>
+                    <IconCheck size={22} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
             </Group>
           </Stack>
         </MusicPageShell>
@@ -545,10 +575,12 @@ function StepLibraryPanel({
   stepLibrary,
   focusLibrary,
   update,
+  commit,
 }: {
   stepLibrary: StepTemplate[];
   focusLibrary: FocusItem[];
   update: UpdateFn;
+  commit: () => Promise<boolean>;
 }) {
   return (
     <Card withBorder className="music-card">
@@ -578,7 +610,7 @@ function StepLibraryPanel({
               <DraggableStep
                 key={s.id}
                 template={s}
-                onEdit={() => openEditSavedSectionModal(s, focusLibrary, update)}
+                onEdit={() => openEditSavedSectionModal(s, focusLibrary, update, commit)}
               />
             ))
           ) : (

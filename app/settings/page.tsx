@@ -17,7 +17,7 @@ function download(filename: string, text: string) {
 }
 
 export default function SettingsPage() {
-  const { data, update, cloudSyncEnabled } = useAppData();
+  const { data, update, commit, cloudSyncEnabled } = useAppData();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +66,7 @@ export default function SettingsPage() {
                     const text = await file.text();
                     const imported = JSON.parse(text) as typeof data;
                     update((prev) => ({ ...prev, ...imported }));
+                    await commit();
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Import failed");
                   } finally {
@@ -120,6 +121,7 @@ export default function SettingsPage() {
                         activeRun: undefined,
                         lastCompletedRun: undefined,
                       }));
+                      void commit();
                     },
                   });
                 }}

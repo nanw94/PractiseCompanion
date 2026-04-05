@@ -15,7 +15,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "@mantine/core";
-import { IconCheck, IconPlus, IconTrash, IconX } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconPlus, IconTrash, IconX } from "@tabler/icons-react";
 import type { RoutineStep, StepTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { formatDuration } from "@/lib/time";
@@ -39,13 +39,24 @@ function newRoutineStepId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function duplicateStepTemplate(source: StepTemplate): StepTemplate {
+  return {
+    id: newId("section"),
+    name: `copy of ${source.name}`,
+    durationSec: source.durationSec,
+    focusIds: [...(source.focusIds ?? [])],
+    note: source.note,
+    imageDataUrl: source.imageDataUrl,
+  };
+}
+
 type Selected = string | "new" | null;
 
 /** Align with Library chrome: header, title, tabs, padding. */
 const SECTIONS_TAB_COLUMN_MIN_HEIGHT = "calc(100dvh - 200px)";
 
 export function SectionsTab() {
-  const { data, update } = useAppData();
+  const { data, update, commit } = useAppData();
 
   const focusLibrary = data.focusLibrary ?? [];
   const stepLibrary = useMemo(() => data.stepLibrary ?? [], [data.stepLibrary]);
@@ -158,6 +169,7 @@ export function SectionsTab() {
         stepLibrary: [section, ...(prev.stepLibrary ?? [])],
       }));
       setSelectedId(section.id);
+      void commit();
       return;
     }
 
@@ -178,6 +190,7 @@ export function SectionsTab() {
           : x,
       ),
     }));
+    void commit();
   };
 
   const onRoutinesForSectionChange = (nextIds: string[]) => {
@@ -235,6 +248,19 @@ export function SectionsTab() {
       });
       return { ...prev, routines: nextRoutines };
     });
+    void commit();
+  };
+
+  const duplicateSection = (source: StepTemplate) => {
+    const copy = duplicateStepTemplate(source);
+    update((prev) => ({
+      ...prev,
+      stepLibrary: [copy, ...(prev.stepLibrary ?? [])],
+    }));
+    setSelectedId(copy.id);
+    // Commit after React applies state so dataRef / PUT payload includes the new section (and avoid
+    // TOKEN_REFRESHED replacing local state before the duplicate lands on the server).
+    queueMicrotask(() => void commit());
   };
 
   const requestDelete = () => {
@@ -260,6 +286,7 @@ export function SectionsTab() {
         }));
         setSelectedId(null);
         resetDraftNew();
+        void commit();
       },
     });
   };
@@ -297,14 +324,12 @@ export function SectionsTab() {
               </Text>
             ) : (
               stepLibrary.map((s) => (
-                <UnstyledButton
+                <Group
                   key={s.id}
-                  onClick={() => setSelectedId(s.id)}
+                  gap={6}
+                  wrap="nowrap"
+                  align="stretch"
                   style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
                     borderRadius: 8,
                     border:
                       selectedId === s.id
@@ -312,15 +337,41 @@ export function SectionsTab() {
                         : "1px solid var(--mantine-color-default-border, #dee2e6)",
                     background:
                       selectedId === s.id ? "var(--mantine-color-burgundy-0, rgba(134,46,46,0.08))" : undefined,
+                    overflow: "hidden",
                   }}
                 >
-                  <Text size="sm" fw={600} truncate>
-                    {s.name}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {formatDuration(s.durationSec)}
-                  </Text>
-                </UnstyledButton>
+                  <UnstyledButton
+                    onClick={() => setSelectedId(s.id)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      textAlign: "left",
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <Text size="sm" fw={600} truncate>
+                      {s.name}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {formatDuration(s.durationSec)}
+                    </Text>
+                  </UnstyledButton>
+                  <Tooltip label="Duplicate section">
+                    <ActionIcon
+                      variant="subtle"
+                      size="md"
+                      aria-label="Duplicate section"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        duplicateSection(s);
+                      }}
+                      style={{ alignSelf: "center", flexShrink: 0, marginRight: 6 }}
+                    >
+                      <IconCopy size={18} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
               ))
             )}
           </Stack>

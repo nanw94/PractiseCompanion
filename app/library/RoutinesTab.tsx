@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionIcon, Button, Card, Group, Stack, Text, TextInput, Tooltip } from "@mantine/core";
-import { IconPencil, IconPlayerPlay, IconTrash } from "@tabler/icons-react";
+import { IconCopy, IconPencil, IconPlayerPlay, IconTrash } from "@tabler/icons-react";
 import type { RoutineTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { useActiveRun } from "@/hooks/useActiveRun";
@@ -17,9 +17,24 @@ function newRoutineId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function newStepId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function duplicateRoutine(source: RoutineTemplate): RoutineTemplate {
+  const steps = source.steps.map((s) => ({ ...s, id: newStepId() }));
+  return {
+    id: newRoutineId(),
+    name: `copy-${source.name}`,
+    totalDurationSec: steps.reduce((acc, s) => acc + s.durationSec, 0),
+    steps,
+  };
+}
+
 export function RoutinesTab() {
   const router = useRouter();
-  const { data, update } = useAppData();
+  const { data, update, commit } = useAppData();
   const { activeRun, start } = useActiveRun();
 
   const routines = data.routines ?? [];
@@ -58,7 +73,10 @@ export function RoutinesTab() {
                   steps: [],
                 };
                 update((prev) => ({ ...prev, routines: [routine, ...(prev.routines ?? [])] }));
-                router.push(`/routines/${routine.id}`);
+                void (async () => {
+                  const ok = await commit();
+                  if (ok) router.push(`/routines/${routine.id}`);
+                })();
               }}
             >
               Create
@@ -91,17 +109,32 @@ export function RoutinesTab() {
                           children: <Text size="sm">This will end your current session.</Text>,
                           labels: { confirm: "Replace", cancel: "Cancel" },
                           onConfirm: () => {
-                            start(r.id);
-                            router.push("/");
+                            void start(r.id).then(() => router.push("/"));
                           },
                         });
                         return;
                       }
-                      start(r.id);
-                      router.push("/");
+                      void start(r.id).then(() => router.push("/"));
                     }}
                   >
                     <IconPlayerPlay size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Duplicate routine">
+                  <ActionIcon
+                    variant="light"
+                    size="lg"
+                    aria-label="Duplicate routine"
+                    onClick={() => {
+                      const copy = duplicateRoutine(r);
+                      update((prev) => ({ ...prev, routines: [copy, ...(prev.routines ?? [])] }));
+                      void (async () => {
+                        const ok = await commit();
+                        if (ok) router.push(`/routines/${copy.id}`);
+                      })();
+                    }}
+                  >
+                    <IconCopy size={20} />
                   </ActionIcon>
                 </Tooltip>
                 <Tooltip label="Edit routine">
@@ -138,6 +171,7 @@ export function RoutinesTab() {
                               activeRun: prev.activeRun?.routineId === r.id ? undefined : prev.activeRun,
                             };
                           });
+                          void commit();
                         },
                       });
                     }}

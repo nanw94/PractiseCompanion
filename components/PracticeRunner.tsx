@@ -57,8 +57,7 @@ export function PracticeRunner() {
   useEffect(() => {
     if (!routine || !activeRun) return;
     if (activeRun.currentStepIndex >= routine.steps.length) {
-      finish();
-      router.push("/done");
+      void finish().then(() => router.push("/done"));
     }
   }, [activeRun, routine, finish, router]);
 
@@ -255,10 +254,7 @@ export function PracticeRunner() {
             variant="light"
             size="lg"
             aria-label="Finish routine"
-            onClick={() => {
-              finish();
-              router.push("/done");
-            }}
+            onClick={() => void finish().then(() => router.push("/done"))}
           >
             <IconCheck size={22} />
           </ActionIcon>

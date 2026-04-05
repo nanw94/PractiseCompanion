@@ -4,10 +4,8 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AppData } from "@/lib/model";
 import { parseAppDataFromJson } from "@/lib/parse-app-data";
-import { clearAppData, createEmptyAppData, loadAppData, saveAppData } from "@/lib/storage";
+import { clearAppData, createEmptyAppData } from "@/lib/storage";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-
-const SYNC_DEBOUNCE_MS = 800;
 
 async function fetchCloudData(): Promise<AppData | null> {
   const res = await fetch("/api/app-data");
@@ -30,23 +28,35 @@ export type SyncStatus = "idle" | "saving" | "saved" | "error";
 
 export type AppDataContextValue = {
   data: AppData;
+  /** Edits library/settings/routine builder; marks unsaved (no server write). */
   update: (updater: (prev: AppData) => AppData) => void;
+  /** Active run timer / controls only; does not mark unsaved. */
+  updateRun: (updater: (prev: AppData) => AppData) => void;
+  /** True when draft differs from last successful server snapshot. */
+  dirty: boolean;
+  /** Persist draft to server. Returns whether PUT succeeded. */
+  commit: () => Promise<boolean>;
+  /** Drop local edits and reload from last committed snapshot. */
+  revertDraft: () => void;
   hydrated: boolean;
   cloudSyncEnabled: boolean;
   syncStatus: SyncStatus;
-  flushCloudSync: () => Promise<void>;
   clearLocalData: () => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
+function cloneAppData(d: AppData): AppData {
+  return JSON.parse(JSON.stringify(d)) as AppData;
+}
+
 function useAppDataState(): AppDataContextValue {
-  const [data, setData] = useState<AppData>(() => loadAppData());
+  const [data, setData] = useState<AppData>(() => createEmptyAppData());
+  const persistedRef = useRef<AppData | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
-  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataRef = useRef(data);
   dataRef.current = data;
   const cloudSyncEnabledRef = useRef(cloudSyncEnabled);
@@ -55,49 +65,57 @@ function useAppDataState(): AppDataContextValue {
 
   const clearLocalData = useCallback(() => {
     clearAppData();
-    setData(createEmptyAppData());
+    persistedRef.current = null;
+    const empty = createEmptyAppData();
+    dataRef.current = empty;
+    setData(empty);
+    setDirty(false);
   }, []);
 
-  const scheduleSync = useCallback((next: AppData) => {
-    if (!cloudSyncEnabledRef.current) return;
-    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    setSyncStatus("saving");
-    syncTimerRef.current = setTimeout(async () => {
-      syncTimerRef.current = null;
-      const ok = await pushCloudData(next);
-      setSyncStatus(ok ? "saved" : "error");
-      if (ok) {
-        savedTimerRef.current = setTimeout(() => {
-          setSyncStatus("idle");
-          savedTimerRef.current = null;
-        }, 2500);
-      }
-    }, SYNC_DEBOUNCE_MS);
+  const revertDraft = useCallback(() => {
+    if (persistedRef.current) {
+      const copy = cloneAppData(persistedRef.current);
+      dataRef.current = copy;
+      setData(copy);
+      setDirty(false);
+    }
   }, []);
 
-  const flushCloudSync = useCallback(async () => {
-    if (!cloudSyncEnabledRef.current) return;
-    if (syncTimerRef.current) {
-      clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = null;
+  const commit = useCallback(async (): Promise<boolean> => {
+    if (!cloudSyncEnabledRef.current) {
+      setSyncStatus("error");
+      return false;
     }
     setSyncStatus("saving");
-    const ok = await pushCloudData(dataRef.current);
-    setSyncStatus(ok ? "saved" : "error");
+    const payload = dataRef.current;
+    const ok = await pushCloudData(payload);
+    if (ok) {
+      persistedRef.current = cloneAppData(payload);
+      setDirty(false);
+      setSyncStatus("saved");
+      window.setTimeout(() => setSyncStatus("idle"), 2000);
+    } else {
+      setSyncStatus("error");
+    }
+    return ok;
   }, []);
 
-  const update = useCallback(
-    (updater: (prev: AppData) => AppData) => {
-      setData((prev) => {
-        const next = updater(prev);
-        saveAppData(next);
-        scheduleSync(next);
-        return next;
-      });
-    },
-    [scheduleSync],
-  );
+  const update = useCallback((updater: (prev: AppData) => AppData) => {
+    setData((prev) => {
+      const next = updater(prev);
+      dataRef.current = next;
+      return next;
+    });
+    setDirty(true);
+  }, []);
+
+  const updateRun = useCallback((updater: (prev: AppData) => AppData) => {
+    setData((prev) => {
+      const next = updater(prev);
+      dataRef.current = next;
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -113,12 +131,21 @@ function useAppDataState(): AppDataContextValue {
     }
 
     const handleSession = async (event: string, hasUser: boolean) => {
+      // Token refresh / profile updates must not replace in-memory app data (would drop pending edits
+      // and race with in-flight commits, e.g. duplicate section + PUT).
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        return;
+      }
+
       const gen = ++loadGenRef.current;
 
-      // On sign-out: clear local data so next user starts fresh
       if (event === "SIGNED_OUT") {
         clearAppData();
-        setData(createEmptyAppData());
+        persistedRef.current = null;
+        const emptyOut = createEmptyAppData();
+        dataRef.current = emptyOut;
+        setData(emptyOut);
+        setDirty(false);
         setCloudSyncEnabled(false);
         setHydrated(true);
         setSyncStatus("idle");
@@ -126,6 +153,11 @@ function useAppDataState(): AppDataContextValue {
       }
 
       if (!hasUser) {
+        persistedRef.current = null;
+        const emptyUser = createEmptyAppData();
+        dataRef.current = emptyUser;
+        setData(emptyUser);
+        setDirty(false);
         setCloudSyncEnabled(false);
         setHydrated(true);
         return;
@@ -135,13 +167,18 @@ function useAppDataState(): AppDataContextValue {
       if (gen !== loadGenRef.current) return;
 
       if (remote) {
-        setData(remote);
-        saveAppData(remote);
+        const copy = cloneAppData(remote);
+        persistedRef.current = copy;
+        dataRef.current = copy;
+        setData(copy);
+        setDirty(false);
       } else {
-        // New user: seed DB with empty data (not local from a previous user)
         const empty = createEmptyAppData();
+        const persistedEmpty = cloneAppData(empty);
+        persistedRef.current = persistedEmpty;
+        dataRef.current = empty;
         setData(empty);
-        saveAppData(empty);
+        setDirty(false);
         await pushCloudData(empty);
       }
       if (gen !== loadGenRef.current) return;
@@ -159,30 +196,23 @@ function useAppDataState(): AppDataContextValue {
       void handleSession(event, Boolean(session?.user));
     });
 
-    return () => {
-      subscription.unsubscribe();
-      if (syncTimerRef.current) {
-        clearTimeout(syncTimerRef.current);
-        syncTimerRef.current = null;
-      }
-      if (savedTimerRef.current) {
-        clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = null;
-      }
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   return useMemo(
     () => ({
       data,
       update,
+      updateRun,
+      dirty,
+      commit,
+      revertDraft,
       hydrated,
       cloudSyncEnabled,
       syncStatus,
-      flushCloudSync,
       clearLocalData,
     }),
-    [data, update, hydrated, cloudSyncEnabled, syncStatus, flushCloudSync, clearLocalData],
+    [data, update, updateRun, dirty, commit, revertDraft, hydrated, cloudSyncEnabled, syncStatus, clearLocalData],
   );
 }
 
