@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionIcon, Button, Card, Group, Stack, Text, TextInput, Tooltip } from "@mantine/core";
@@ -105,10 +106,12 @@ export function RoutinesTab() {
                 </Tooltip>
                 <Tooltip label="Edit routine">
                   <ActionIcon
+                    component={Link}
+                    href={`/routines/${r.id}`}
+                    prefetch
                     variant="default"
                     size="lg"
                     aria-label="Edit routine"
-                    onClick={() => router.push(`/routines/${r.id}`)}
                   >
                     <IconPencil size={20} />
                   </ActionIcon>

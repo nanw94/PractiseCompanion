@@ -1,11 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Container, Stack, Tabs, Text, Title } from "@mantine/core";
 import { RoutinesTab } from "./RoutinesTab";
-import { SectionsTab } from "./SectionsTab";
-import { FocusTab } from "./FocusTab";
+
+const SectionsTab = dynamic(() => import("./SectionsTab").then((m) => ({ default: m.SectionsTab })));
+const FocusTab = dynamic(() => import("./FocusTab").then((m) => ({ default: m.FocusTab })));
 
 const TAB_VALUES = ["routines", "sections", "focus"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -33,7 +35,7 @@ export default function LibraryPage() {
           Routines, sections, and focus — all in one place.
         </Text>
 
-        <Tabs value={tab} onChange={setTabAndUrl}>
+        <Tabs value={tab} onChange={setTabAndUrl} keepMounted={false}>
           <Tabs.List grow>
             <Tabs.Tab value="routines">Routines</Tabs.Tab>
             <Tabs.Tab value="sections">Sections</Tabs.Tab>
