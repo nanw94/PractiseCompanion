@@ -20,6 +20,7 @@ import {
   TextInput,
   Tooltip,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import {
   IconArrowLeft,
   IconCheck,
@@ -333,6 +334,7 @@ export default function RoutineEditPage() {
 
   const { data, update, commit } = useAppData();
   const guardedPush = useGuardedNavigate();
+  const isLandscape = useMediaQuery("(orientation: landscape)") ?? false;
   const routine = (data.routines ?? []).find((r) => r.id === id) ?? null;
   const focusLibrary = data.focusLibrary ?? [];
   const stepLibrary = data.stepLibrary ?? [];
@@ -499,7 +501,7 @@ export default function RoutineEditPage() {
           }
         >
           <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <SimpleGrid cols={isLandscape ? 2 : { base: 1, sm: 2 }} spacing="md">
               <StepLibraryPanel
                 stepLibrary={stepLibrary}
                 focusLibrary={focusLibrary}

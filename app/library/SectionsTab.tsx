@@ -23,6 +23,7 @@ import {
   isSectionNameTaken,
   normalizedSectionNames,
 } from "@/lib/display-name-unique";
+import { useMediaQuery } from "@mantine/hooks";
 import { useAppData } from "@/hooks/useAppData";
 import { formatDuration } from "@/lib/time";
 import { ImageUploadField } from "./ImageUploadField";
@@ -71,6 +72,7 @@ export type SectionsTabProps = {
 
 export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: SectionsTabProps = {}) {
   const { data, update, commit } = useAppData();
+  const isLandscape = useMediaQuery("(orientation: landscape)") ?? false;
 
   const focusLibrary = data.focusLibrary ?? [];
   const stepLibrary = useMemo(() => data.stepLibrary ?? [], [data.stepLibrary]);
@@ -336,7 +338,7 @@ export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: Sect
   };
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" style={{ alignItems: "stretch" }}>
+    <SimpleGrid cols={isLandscape ? 2 : { base: 1, sm: 2 }} spacing="md" style={{ alignItems: "stretch" }}>
       <Card withBorder style={cardStyle}>
         <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
           <Group justify="space-between" align="center">
