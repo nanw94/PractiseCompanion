@@ -499,7 +499,7 @@ export default function RoutineEditPage() {
           }
         >
           <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <StepLibraryPanel
                 stepLibrary={stepLibrary}
                 focusLibrary={focusLibrary}

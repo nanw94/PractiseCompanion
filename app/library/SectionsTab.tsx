@@ -336,7 +336,7 @@ export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: Sect
   };
 
   return (
-    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: "stretch" }}>
+    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" style={{ alignItems: "stretch" }}>
       <Card withBorder style={cardStyle}>
         <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
           <Group justify="space-between" align="center">
