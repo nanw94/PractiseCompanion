@@ -140,6 +140,22 @@
   box-shadow: 0 0 0 2px var(--music-gold-soft);
 }
 
+.music-dropzone-card[data-music-library-drag="true"].mantine-Card-root {
+  border-color: color-mix(in srgb, var(--music-accent) 55%, var(--music-dropzone)) !important;
+  background: color-mix(in srgb, var(--music-surface) 75%, var(--music-accent-soft));
+  box-shadow: 0 0 0 2px var(--music-accent-soft);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.music-dropzone-card[data-music-library-drag="true"][data-music-over="true"].mantine-Card-root {
+  border-color: var(--music-gold) !important;
+  background: color-mix(in srgb, var(--music-surface) 70%, var(--music-gold-soft));
+  box-shadow: 0 0 0 3px var(--music-gold-soft);
+}
+
 .music-draggable-tile {
   background: var(--music-surface-solid);
   border: 1px solid var(--music-surface-border) !important;

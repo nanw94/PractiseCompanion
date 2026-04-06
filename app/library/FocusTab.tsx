@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ActionIcon, Button, Card, Group, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { useEffect, useState } from "react";
+import { ActionIcon, Alert, Button, Card, Group, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { IconCheck, IconPencil, IconTrash, IconX } from "@tabler/icons-react";
 import type { FocusItem } from "@/lib/model";
+import { isFocusLabelTaken } from "@/lib/display-name-unique";
 import { useAppData } from "@/hooks/useAppData";
 import { modals } from "@mantine/modals";
 
@@ -20,9 +21,19 @@ export function FocusTab() {
   const [focusLabel, setFocusLabel] = useState("");
   const [editingFocusId, setEditingFocusId] = useState<string | null>(null);
   const [editingFocusLabel, setEditingFocusLabel] = useState("");
+  const [labelConflictError, setLabelConflictError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLabelConflictError(null);
+  }, [focusLabel, editingFocusLabel]);
 
   return (
     <Stack gap="md">
+      {labelConflictError ? (
+        <Alert color="red" title="Label in use" py="xs">
+          {labelConflictError}
+        </Alert>
+      ) : null}
       <Card withBorder>
         <Stack gap="sm">
           <Text fw={600}>Add focus</Text>
@@ -38,11 +49,12 @@ export function FocusTab() {
               onClick={() => {
                 const label = focusLabel.trim();
                 if (!label) return;
+                if (isFocusLabelTaken(focusLibrary, label, null)) {
+                  setLabelConflictError("A focus with this label already exists.");
+                  return;
+                }
+                setLabelConflictError(null);
                 update((prev) => {
-                  const exists = (prev.focusLibrary ?? []).some(
-                    (f) => f.label.toLowerCase() === label.toLowerCase(),
-                  );
-                  if (exists) return prev;
                   const item: FocusItem = { id: newId("focus"), label };
                   return { ...prev, focusLibrary: [item, ...(prev.focusLibrary ?? [])] };
                 });
@@ -95,6 +107,11 @@ export function FocusTab() {
                         onClick={() => {
                           const label = editingFocusLabel.trim();
                           if (!label) return;
+                          if (isFocusLabelTaken(focusLibrary, label, f.id)) {
+                            setLabelConflictError("Another focus already uses this label.");
+                            return;
+                          }
+                          setLabelConflictError(null);
                           update((prev) => ({
                             ...prev,
                             focusLibrary: (prev.focusLibrary ?? []).map((x) =>

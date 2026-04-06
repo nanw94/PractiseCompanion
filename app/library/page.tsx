@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Container, Stack, Tabs, Text, Title } from "@mantine/core";
+import { LibraryShareBar } from "./LibraryShareBar";
 import { RoutinesTab } from "./RoutinesTab";
 
 const SectionsTab = dynamic(() => import("./SectionsTab").then((m) => ({ default: m.SectionsTab })));
@@ -12,14 +13,23 @@ const FocusTab = dynamic(() => import("./FocusTab").then((m) => ({ default: m.Fo
 const TAB_VALUES = ["routines", "sections", "focus"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
-export default function LibraryPage() {
+function LibraryPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<TabValue>("routines");
+  const [sectionsAutoNew, setSectionsAutoNew] = useState(false);
+
+  const onSectionsAutoNewConsumed = useCallback(() => setSectionsAutoNew(false), []);
 
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
+    const t = searchParams.get("tab");
     if (t && TAB_VALUES.includes(t as TabValue)) setTab(t as TabValue);
-  }, []);
+    if (searchParams.get("new") === "1") {
+      setTab("sections");
+      setSectionsAutoNew(true);
+      router.replace("/library?tab=sections", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const setTabAndUrl = (v: string | null) => {
     if (!v || !TAB_VALUES.includes(v as TabValue)) return;
@@ -35,6 +45,8 @@ export default function LibraryPage() {
           Routines, sections, and focus — all in one place.
         </Text>
 
+        <LibraryShareBar />
+
         <Tabs value={tab} onChange={setTabAndUrl} keepMounted={false}>
           <Tabs.List grow>
             <Tabs.Tab value="routines">Routines</Tabs.Tab>
@@ -47,7 +59,7 @@ export default function LibraryPage() {
           </Tabs.Panel>
 
           <Tabs.Panel value="sections" pt="md">
-            <SectionsTab />
+            <SectionsTab autoOpenNew={sectionsAutoNew} onAutoOpenNewConsumed={onSectionsAutoNewConsumed} />
           </Tabs.Panel>
 
           <Tabs.Panel value="focus" pt="md">
@@ -56,5 +68,19 @@ export default function LibraryPage() {
         </Tabs>
       </Stack>
     </Container>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense
+      fallback={
+        <Container size="sm" py="xl">
+          <Text c="dimmed">Loading library…</Text>
+        </Container>
+      }
+    >
+      <LibraryPageContent />
+    </Suspense>
   );
 }

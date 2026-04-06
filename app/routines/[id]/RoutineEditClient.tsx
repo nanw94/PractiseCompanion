@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   ActionIcon,
@@ -28,6 +28,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { modals } from "@mantine/modals";
+import type { CollisionDetection } from "@dnd-kit/core";
 import {
   DndContext,
   DragEndEvent,
@@ -47,6 +48,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { isSectionNameTaken } from "@/lib/display-name-unique";
 import type { AppData, FocusItem, RoutineStep, RoutineTemplate, StepTemplate } from "@/lib/model";
 import { useAppData } from "@/hooks/useAppData";
 import { useGuardedNavigate } from "@/hooks/useGuardedNavigate";
@@ -70,6 +72,62 @@ function clampRoutineMinutesSec(sec: number) {
 
 /** Prefix canvas step IDs so we can distinguish them from library tile IDs */
 const CANVAS_PREFIX = "canvas:";
+const ROUTINE_DROP_ID = "routine-dropzone";
+
+/** Collision: when dragging from library, only consider canvas dropzone + sortables (not unrelated UI). */
+const routineEditCollisionDetection: CollisionDetection = (args) => {
+  const activeId = String(args.active.id);
+  if (!activeId.startsWith(CANVAS_PREFIX)) {
+    const relevant = args.droppableContainers.filter(
+      (c) => c.id === ROUTINE_DROP_ID || String(c.id).startsWith(CANVAS_PREFIX),
+    );
+    if (relevant.length === 0) return [];
+    return closestCenter({ ...args, droppableContainers: relevant });
+  }
+  return closestCenter(args);
+};
+
+function buildStepsAfterDropFromLibrary(
+  steps: RoutineStep[],
+  tpl: StepTemplate,
+  insertBeforeStepId: string | null,
+): RoutineStep[] {
+  const durationSec = clampRoutineMinutesSec(tpl.durationSec);
+  const baseFields = {
+    name: tpl.name,
+    durationSec,
+    focusIds: tpl.focusIds ?? [],
+    note: tpl.note,
+    imageDataUrl: tpl.imageDataUrl,
+    sectionTemplateId: tpl.id,
+  };
+  const dupIds = new Set(
+    steps.filter((s) => s.sectionTemplateId === tpl.id).slice(1).map((s) => s.id),
+  );
+  const working = steps.filter((s) => !dupIds.has(s.id));
+
+  let targetPos: number;
+  if (insertBeforeStepId == null) {
+    targetPos = working.length;
+  } else {
+    const i = working.findIndex((s) => s.id === insertBeforeStepId);
+    targetPos = i === -1 ? working.length : i;
+  }
+
+  const existingIdx = working.findIndex((s) => s.sectionTemplateId === tpl.id);
+
+  if (existingIdx === -1) {
+    const newStep: RoutineStep = { id: newId(), ...baseFields };
+    return [...working.slice(0, targetPos), newStep, ...working.slice(targetPos)];
+  }
+
+  const merged: RoutineStep = { ...working[existingIdx], ...baseFields };
+  const without = working.filter((_, i) => i !== existingIdx);
+  let pos = targetPos;
+  if (existingIdx < targetPos) pos -= 1;
+  pos = Math.max(0, Math.min(pos, without.length));
+  return [...without.slice(0, pos), merged, ...without.slice(pos)];
+}
 
 function stopDragPropagation(e: React.PointerEvent | React.MouseEvent) {
   e.stopPropagation();
@@ -155,12 +213,30 @@ function openEditSavedSectionModal(
         focusLibrary={focusLibrary}
         onCancel={() => modals.closeAll()}
         onSave={(next) => {
-          update((prev) => ({
-            ...prev,
-            stepLibrary: (prev.stepLibrary ?? []).map((x) => (x.id === next.id ? next : x)),
-          }));
-          void commit();
-          modals.closeAll();
+          const name = next.name.trim();
+          if (!name) return;
+          update((prev) => {
+            const lib = prev.stepLibrary ?? [];
+            if (isSectionNameTaken(lib, name, next.id)) {
+              queueMicrotask(() =>
+                modals.open({
+                  title: "Name in use",
+                  children: (
+                    <Text size="sm">A section with this name already exists. Choose a different name.</Text>
+                  ),
+                }),
+              );
+              return prev;
+            }
+            queueMicrotask(() => {
+              void commit();
+              modals.closeAll();
+            });
+            return {
+              ...prev,
+              stepLibrary: lib.map((x) => (x.id === next.id ? next : x)),
+            };
+          });
         }}
       />
     ),
@@ -309,36 +385,6 @@ export default function RoutineEditPage() {
     });
   };
 
-  const addStepFromTemplate = (tpl: StepTemplate) => {
-    const durationSec = clampRoutineMinutesSec(tpl.durationSec);
-    const base = {
-      name: tpl.name,
-      durationSec,
-      focusIds: tpl.focusIds ?? [],
-      note: tpl.note,
-      imageDataUrl: tpl.imageDataUrl,
-      sectionTemplateId: tpl.id,
-    };
-    const dupIds = new Set(
-      routine.steps.filter((s) => s.sectionTemplateId === tpl.id).slice(1).map((s) => s.id),
-    );
-    const trimmed = routine.steps.filter((s) => !dupIds.has(s.id));
-    const existingIdx = trimmed.findIndex((s) => s.sectionTemplateId === tpl.id);
-    let nextSteps: RoutineStep[];
-    if (existingIdx === -1) {
-      nextSteps = [...trimmed, { id: newId(), ...base }];
-    } else {
-      nextSteps = trimmed.map((s) =>
-        s.sectionTemplateId === tpl.id ? { ...s, ...base } : s,
-      );
-    }
-    updateRoutine({
-      ...routine,
-      steps: nextSteps,
-      totalDurationSec: nextSteps.reduce((a, s) => a + s.durationSec, 0),
-    });
-  };
-
   const removeStep = (stepId: string) => {
     const nextSteps = routine.steps.filter((s) => s.id !== stepId);
     updateRoutine({
@@ -348,33 +394,85 @@ export default function RoutineEditPage() {
     });
   };
 
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    const activeId = String(active.id);
+  const [librarySectionDrag, setLibrarySectionDrag] = useState(false);
 
-    if (over?.id === "routine-dropzone" && !activeId.startsWith(CANVAS_PREFIX)) {
-      const tpl = stepLibrary.find((s) => s.id === activeId);
-      if (tpl) addStepFromTemplate(tpl);
-      return;
-    }
+  const onDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      const activeId = String(active.id);
 
-    if (activeId.startsWith(CANVAS_PREFIX) && over && activeId !== String(over.id)) {
-      const fromId = activeId.slice(CANVAS_PREFIX.length);
-      const toId = String(over.id).slice(CANVAS_PREFIX.length);
-      const oldIndex = routine.steps.findIndex((s) => s.id === fromId);
-      const newIndex = routine.steps.findIndex((s) => s.id === toId);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const nextSteps = arrayMove(routine.steps, oldIndex, newIndex);
-        updateRoutine({ ...routine, steps: nextSteps });
+      if (!activeId.startsWith(CANVAS_PREFIX)) {
+        const validTarget =
+          over?.id === ROUTINE_DROP_ID || (over != null && String(over.id).startsWith(CANVAS_PREFIX));
+        if (!validTarget) return;
+
+        update((prev) => {
+          const routines = prev.routines ?? [];
+          const r = routines.find((x) => x.id === id);
+          if (!r) return prev;
+          const tpl = (prev.stepLibrary ?? []).find((s) => s.id === activeId);
+          if (!tpl) return prev;
+
+          let insertBeforeStepId: string | null = null;
+          if (over?.id === ROUTINE_DROP_ID) {
+            insertBeforeStepId = null;
+          } else if (over && String(over.id).startsWith(CANVAS_PREFIX)) {
+            insertBeforeStepId = String(over.id).slice(CANVAS_PREFIX.length);
+          } else {
+            return prev;
+          }
+
+          const nextSteps = buildStepsAfterDropFromLibrary(r.steps, tpl, insertBeforeStepId);
+          const totalDurationSec = nextSteps.reduce((acc, s) => acc + s.durationSec, 0);
+          const nextRoutine = { ...r, steps: nextSteps, totalDurationSec };
+          return { ...prev, routines: routines.map((x) => (x.id === id ? nextRoutine : x)) };
+        });
+        return;
       }
-    }
-  };
+
+      if (activeId.startsWith(CANVAS_PREFIX) && over && activeId !== String(over.id)) {
+        const fromId = activeId.slice(CANVAS_PREFIX.length);
+        const toId = String(over.id).slice(CANVAS_PREFIX.length);
+        update((prev) => {
+          const routines = prev.routines ?? [];
+          const r = routines.find((x) => x.id === id);
+          if (!r) return prev;
+          const oldIndex = r.steps.findIndex((s) => s.id === fromId);
+          const newIndex = r.steps.findIndex((s) => s.id === toId);
+          if (oldIndex === -1 || newIndex === -1) return prev;
+          const nextSteps = arrayMove(r.steps, oldIndex, newIndex);
+          const totalDurationSec = nextSteps.reduce((acc, s) => acc + s.durationSec, 0);
+          return {
+            ...prev,
+            routines: routines.map((x) => (x.id === id ? { ...x, steps: nextSteps, totalDurationSec } : x)),
+          };
+        });
+      }
+    },
+    [id, update],
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setLibrarySectionDrag(false);
+      onDragEnd(event);
+    },
+    [onDragEnd],
+  );
 
   const sortableIds = routine.steps.map((s) => `${CANVAS_PREFIX}${s.id}`);
 
   return (
     <Container size="xl" px="md">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={routineEditCollisionDetection}
+        onDragStart={(e) => {
+          if (!String(e.active.id).startsWith(CANVAS_PREFIX)) setLibrarySectionDrag(true);
+        }}
+        onDragCancel={() => setLibrarySectionDrag(false)}
+        onDragEnd={handleDragEnd}
+      >
         <MusicPageShell
           eyebrow="Edit routine"
           titleSlot={
@@ -408,7 +506,7 @@ export default function RoutineEditPage() {
                 update={update}
                 commit={commit}
               />
-              <RoutineDropzone>
+              <RoutineDropzone librarySectionDrag={librarySectionDrag}>
                 <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
                   <Stack gap="xs">
                     {routine.steps.length === 0 ? (
@@ -590,7 +688,7 @@ function StepLibraryPanel({
           <Tooltip label="Add section in Library">
             <ActionIcon
               component={Link}
-              href="/library?tab=sections"
+              href="/library?tab=sections&new=1"
               prefetch
               variant="light"
               color="burgundy"
@@ -670,21 +768,33 @@ function DraggableStep({ template, onEdit }: { template: StepTemplate; onEdit: (
   );
 }
 
-function RoutineDropzone({ children }: { children: ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "routine-dropzone" });
+function RoutineDropzone({
+  children,
+  librarySectionDrag,
+}: {
+  children: ReactNode;
+  librarySectionDrag: boolean;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: ROUTINE_DROP_ID });
 
   return (
     <Card
       withBorder
-      ref={setNodeRef}
       className="music-dropzone-card"
       data-music-over={isOver ? "true" : "false"}
+      data-music-library-drag={librarySectionDrag ? "true" : "false"}
     >
-      <Stack gap="sm">
+      <Stack ref={setNodeRef} gap="sm" className="routine-canvas-droppable-inner" style={{ minHeight: 160 }}>
         <Group justify="space-between">
           <Text fw={600}>Routine canvas</Text>
           <Text c="dimmed" size="sm">
-            {isOver ? "Release to add section" : "Drop or reorder"}
+            {librarySectionDrag
+              ? isOver
+                ? "Release to add section"
+                : "Drop here"
+              : isOver
+                ? "Release to add section"
+                : "Drop or reorder"}
           </Text>
         </Group>
         {children}

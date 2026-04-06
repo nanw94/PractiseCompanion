@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionIcon,
+  Alert,
   Card,
   Group,
   MultiSelect,
@@ -17,6 +18,11 @@ import {
 } from "@mantine/core";
 import { IconCheck, IconCopy, IconPlus, IconTrash, IconX } from "@tabler/icons-react";
 import type { RoutineStep, StepTemplate } from "@/lib/model";
+import {
+  allocateUniqueDisplayName,
+  isSectionNameTaken,
+  normalizedSectionNames,
+} from "@/lib/display-name-unique";
 import { useAppData } from "@/hooks/useAppData";
 import { formatDuration } from "@/lib/time";
 import { ImageUploadField } from "./ImageUploadField";
@@ -39,10 +45,12 @@ function newRoutineStepId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function duplicateStepTemplate(source: StepTemplate): StepTemplate {
+function duplicateStepTemplate(source: StepTemplate, stepLibrary: StepTemplate[]): StepTemplate {
+  const taken = normalizedSectionNames(stepLibrary);
+  const name = allocateUniqueDisplayName(`copy of ${source.name}`, taken);
   return {
     id: newId("section"),
-    name: `copy of ${source.name}`,
+    name,
     durationSec: source.durationSec,
     focusIds: [...(source.focusIds ?? [])],
     note: source.note,
@@ -55,7 +63,13 @@ type Selected = string | "new" | null;
 /** Align with Library chrome: header, title, tabs, padding. */
 const SECTIONS_TAB_COLUMN_MIN_HEIGHT = "calc(100dvh - 200px)";
 
-export function SectionsTab() {
+export type SectionsTabProps = {
+  /** Open “new section” once (e.g. from routine editor → Library with `?new=1`). */
+  autoOpenNew?: boolean;
+  onAutoOpenNewConsumed?: () => void;
+};
+
+export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: SectionsTabProps = {}) {
   const { data, update, commit } = useAppData();
 
   const focusLibrary = data.focusLibrary ?? [];
@@ -63,12 +77,25 @@ export function SectionsTab() {
   const routines = useMemo(() => data.routines ?? [], [data.routines]);
 
   const [selectedId, setSelectedId] = useState<Selected>(null);
+  const autoNewConsumedRef = useRef(false);
+
+  useEffect(() => {
+    if (!autoOpenNew) {
+      autoNewConsumedRef.current = false;
+      return;
+    }
+    if (autoNewConsumedRef.current) return;
+    autoNewConsumedRef.current = true;
+    setSelectedId("new");
+    onAutoOpenNewConsumed?.();
+  }, [autoOpenNew, onAutoOpenNewConsumed]);
 
   const [draftName, setDraftName] = useState("");
   const [draftMinutes, setDraftMinutes] = useState<number | string>(5);
   const [draftFocusIds, setDraftFocusIds] = useState<string[]>([]);
   const [draftNote, setDraftNote] = useState("");
   const [draftImageDataUrl, setDraftImageDataUrl] = useState<string | null>(null);
+  const [nameConflictError, setNameConflictError] = useState<string | null>(null);
 
   const selectedTemplate = useMemo(
     () => (selectedId && selectedId !== "new" ? stepLibrary.find((s) => s.id === selectedId) ?? null : null),
@@ -108,6 +135,10 @@ export function SectionsTab() {
       resetDraftNew();
     }
   }, [selectedId, stepLibrary, loadDraftFromTemplate, resetDraftNew]);
+
+  useEffect(() => {
+    setNameConflictError(null);
+  }, [draftName]);
 
   const draftMinutesNum = useMemo(() => {
     const n = typeof draftMinutes === "number" ? draftMinutes : parseFloat(String(draftMinutes));
@@ -154,6 +185,13 @@ export function SectionsTab() {
   const save = () => {
     const name = draftName.trim();
     if (!name) return;
+
+    const excludeId = selectedId === "new" ? null : selectedId;
+    if (isSectionNameTaken(stepLibrary, name, excludeId)) {
+      setNameConflictError("A section with this name already exists. Choose a different name.");
+      return;
+    }
+    setNameConflictError(null);
 
     if (selectedId === "new") {
       const section: StepTemplate = {
@@ -252,7 +290,7 @@ export function SectionsTab() {
   };
 
   const duplicateSection = (source: StepTemplate) => {
-    const copy = duplicateStepTemplate(source);
+    const copy = duplicateStepTemplate(source, stepLibrary);
     update((prev) => ({
       ...prev,
       stepLibrary: [copy, ...(prev.stepLibrary ?? [])],
@@ -423,6 +461,11 @@ export function SectionsTab() {
           ) : (
             <Stack gap="sm" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <TextInput label="Name" value={draftName} onChange={(e) => setDraftName(e.currentTarget.value)} />
+              {nameConflictError ? (
+                <Alert color="red" title="Name in use" py="xs">
+                  {nameConflictError}
+                </Alert>
+              ) : null}
               <NumberInput label="Minutes" min={1} max={120} value={draftMinutes} onChange={setDraftMinutes} />
               <MultiSelect
                 label="Focus"
