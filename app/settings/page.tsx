@@ -1,7 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ActionIcon, Card, Container, Group, Stack, Text, Title, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Card,
+  Container,
+  Group,
+  SegmentedControl,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+  useMantineColorScheme,
+} from "@mantine/core";
 import { IconDownload, IconTrash, IconUpload } from "@tabler/icons-react";
 import { useAppData } from "@/hooks/useAppData";
 import { modals } from "@mantine/modals";
@@ -19,6 +30,7 @@ function download(filename: string, text: string) {
 
 export default function SettingsPage() {
   const { data, update, commit, cloudSyncEnabled } = useAppData();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +38,34 @@ export default function SettingsPage() {
     <Container size="sm">
       <Stack gap="md">
         <Title order={2}>Settings</Title>
+
+        <Card withBorder>
+          <Stack gap="sm">
+            <Title order={3}>Appearance</Title>
+            <Text c="dimmed" size="sm">
+              Choose how the app theme is applied.
+            </Text>
+            <SegmentedControl
+              fullWidth
+              value={colorScheme}
+              data={[
+                { label: "Light", value: "light" },
+                { label: "Dark", value: "dark" },
+                { label: "Auto", value: "auto" },
+              ]}
+              onChange={(value) => {
+                if (value === "light" || value === "dark" || value === "auto") {
+                  setColorScheme(value);
+                }
+              }}
+            />
+            <Text c="dimmed" size="xs">
+              {colorScheme === "auto"
+                ? "Auto follows your device/browser theme."
+                : `Using ${colorScheme} theme.`}
+            </Text>
+          </Stack>
+        </Card>
 
         <Card withBorder>
           <Stack gap="sm">
