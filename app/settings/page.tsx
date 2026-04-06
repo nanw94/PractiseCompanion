@@ -5,6 +5,7 @@ import { ActionIcon, Card, Container, Group, Stack, Text, Title, Tooltip } from 
 import { IconDownload, IconTrash, IconUpload } from "@tabler/icons-react";
 import { useAppData } from "@/hooks/useAppData";
 import { modals } from "@mantine/modals";
+import { LibraryShareBar } from "../library/LibraryShareBar";
 
 function download(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json" });
@@ -94,6 +95,8 @@ export default function SettingsPage() {
             ) : null}
           </Stack>
         </Card>
+
+        <LibraryShareBar />
 
         <Card withBorder>
           <Stack gap="sm">

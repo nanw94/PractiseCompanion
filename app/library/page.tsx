@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Container, Stack, Tabs, Text, Title } from "@mantine/core";
-import { LibraryShareBar } from "./LibraryShareBar";
 import { RoutinesTab } from "./RoutinesTab";
 
 const SectionsTab = dynamic(() => import("./SectionsTab").then((m) => ({ default: m.SectionsTab })));
@@ -44,8 +43,6 @@ function LibraryPageContent() {
         <Text c="dimmed" size="sm">
           Routines, sections, and focus — all in one place.
         </Text>
-
-        <LibraryShareBar />
 
         <Tabs value={tab} onChange={setTabAndUrl} keepMounted={false}>
           <Tabs.List grow>
