@@ -28,17 +28,14 @@ import { useAppData } from "@/hooks/useAppData";
 import { formatDuration } from "@/lib/time";
 import { ImageUploadField } from "./ImageUploadField";
 import { modals } from "@mantine/modals";
+import {
+  linkedRoutineStepFieldsFromTemplate,
+  syncTemplateIntoLinkedRoutineSteps,
+} from "@/lib/routine-section-sync";
 
 function newId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `${prefix}_${crypto.randomUUID()}`;
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
-/** Same cap as routine canvas (routine editor). */
-function clampRoutineCanvasDurationSec(sec: number) {
-  const m = Math.round(sec / 60);
-  const c = Math.min(30, Math.max(1, m));
-  return c * 60;
 }
 
 function newRoutineStepId() {
@@ -209,28 +206,31 @@ export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: Sect
         stepLibrary: [section, ...(prev.stepLibrary ?? [])],
       }));
       setSelectedId(section.id);
-      void commit();
+      queueMicrotask(() => void commit());
       return;
     }
 
     if (!selectedId || !selectedTemplate) return;
 
+    const nextTemplate: StepTemplate = {
+      ...selectedTemplate,
+      name,
+      durationSec: Math.max(60, draftMinutesNum * 60),
+      focusIds: [...draftFocusIds],
+      note: draftNote.trim() || undefined,
+      imageDataUrl: draftImageDataUrl ?? undefined,
+    };
+
     update((prev) => ({
       ...prev,
       stepLibrary: (prev.stepLibrary ?? []).map((x) =>
         x.id === selectedId
-          ? {
-              ...x,
-              name,
-              durationSec: Math.max(60, draftMinutesNum * 60),
-              focusIds: draftFocusIds,
-              note: draftNote.trim() || undefined,
-              imageDataUrl: draftImageDataUrl ?? undefined,
-            }
+          ? nextTemplate
           : x,
       ),
+      routines: syncTemplateIntoLinkedRoutineSteps(prev.routines ?? [], nextTemplate),
     }));
-    void commit();
+    queueMicrotask(() => void commit());
   };
 
   const onRoutinesForSectionChange = (nextIds: string[]) => {
@@ -244,14 +244,15 @@ export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: Sect
 
     update((prev) => {
       const name = draftName.trim();
-      const baseFields = {
+      const draftTemplate: StepTemplate = {
+        id: templateId,
         name,
-        durationSec: clampRoutineCanvasDurationSec(Math.max(60, draftMinutesNum * 60)),
+        durationSec: Math.max(60, draftMinutesNum * 60),
         focusIds: [...draftFocusIds],
         note: draftNote.trim() || undefined,
         imageDataUrl: draftImageDataUrl ?? undefined,
-        sectionTemplateId: templateId,
       };
+      const baseFields = linkedRoutineStepFieldsFromTemplate(draftTemplate);
 
       const nextRoutines = (prev.routines ?? []).map((r) => {
         const shouldInclude = nextIds.includes(r.id);
@@ -288,7 +289,7 @@ export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: Sect
       });
       return { ...prev, routines: nextRoutines };
     });
-    void commit();
+    queueMicrotask(() => void commit());
   };
 
   const duplicateSection = (source: StepTemplate) => {
@@ -326,7 +327,7 @@ export function SectionsTab({ autoOpenNew = false, onAutoOpenNewConsumed }: Sect
         }));
         setSelectedId(null);
         resetDraftNew();
-        void commit();
+        queueMicrotask(() => void commit());
       },
     });
   };
