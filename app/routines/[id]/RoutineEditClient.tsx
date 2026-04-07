@@ -56,6 +56,10 @@ import { useGuardedNavigate } from "@/hooks/useGuardedNavigate";
 import { formatDuration } from "@/lib/time";
 import { MusicPageShell } from "@/components/MusicPageShell";
 import { ImageUploadField } from "@/app/library/ImageUploadField";
+import {
+  linkedRoutineStepFieldsFromTemplate,
+  syncTemplateIntoLinkedRoutineSteps,
+} from "@/lib/routine-section-sync";
 
 function newId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -93,15 +97,7 @@ function buildStepsAfterDropFromLibrary(
   tpl: StepTemplate,
   insertBeforeStepId: string | null,
 ): RoutineStep[] {
-  const durationSec = clampRoutineMinutesSec(tpl.durationSec);
-  const baseFields = {
-    name: tpl.name,
-    durationSec,
-    focusIds: tpl.focusIds ?? [],
-    note: tpl.note,
-    imageDataUrl: tpl.imageDataUrl,
-    sectionTemplateId: tpl.id,
-  };
+  const baseFields = linkedRoutineStepFieldsFromTemplate(tpl);
   const dupIds = new Set(
     steps.filter((s) => s.sectionTemplateId === tpl.id).slice(1).map((s) => s.id),
   );
@@ -216,6 +212,7 @@ function openEditSavedSectionModal(
         onSave={(next) => {
           const name = next.name.trim();
           if (!name) return;
+          const nextTemplate: StepTemplate = { ...next, name };
           update((prev) => {
             const lib = prev.stepLibrary ?? [];
             if (isSectionNameTaken(lib, name, next.id)) {
@@ -235,7 +232,8 @@ function openEditSavedSectionModal(
             });
             return {
               ...prev,
-              stepLibrary: lib.map((x) => (x.id === next.id ? next : x)),
+              stepLibrary: lib.map((x) => (x.id === next.id ? nextTemplate : x)),
+              routines: syncTemplateIntoLinkedRoutineSteps(prev.routines ?? [], nextTemplate),
             };
           });
         }}

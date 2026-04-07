@@ -58,9 +58,6 @@ function useAppDataState(): AppDataContextValue {
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const dataRef = useRef(data);
-  dataRef.current = data;
-  const cloudSyncEnabledRef = useRef(cloudSyncEnabled);
-  cloudSyncEnabledRef.current = cloudSyncEnabled;
   const loadGenRef = useRef(0);
 
   const clearLocalData = useCallback(() => {
@@ -82,7 +79,7 @@ function useAppDataState(): AppDataContextValue {
   }, []);
 
   const commit = useCallback(async (): Promise<boolean> => {
-    if (!cloudSyncEnabledRef.current) {
+    if (!cloudSyncEnabled) {
       setSyncStatus("error");
       return false;
     }
@@ -98,23 +95,19 @@ function useAppDataState(): AppDataContextValue {
       setSyncStatus("error");
     }
     return ok;
-  }, []);
+  }, [cloudSyncEnabled]);
 
   const update = useCallback((updater: (prev: AppData) => AppData) => {
-    setData((prev) => {
-      const next = updater(prev);
-      dataRef.current = next;
-      return next;
-    });
+    const next = updater(dataRef.current);
+    dataRef.current = next;
+    setData(next);
     setDirty(true);
   }, []);
 
   const updateRun = useCallback((updater: (prev: AppData) => AppData) => {
-    setData((prev) => {
-      const next = updater(prev);
-      dataRef.current = next;
-      return next;
-    });
+    const next = updater(dataRef.current);
+    dataRef.current = next;
+    setData(next);
   }, []);
 
   useEffect(() => {
